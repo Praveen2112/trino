@@ -182,6 +182,7 @@ import io.prestosql.sql.tree.Use;
 import io.prestosql.sql.tree.Values;
 import io.prestosql.sql.tree.WhenClause;
 import io.prestosql.sql.tree.Window;
+import io.prestosql.sql.tree.WindowClause;
 import io.prestosql.sql.tree.WindowFrame;
 import io.prestosql.sql.tree.With;
 import io.prestosql.sql.tree.WithQuery;
@@ -698,6 +699,7 @@ class AstBuilder
 
             from = Optional.of(relation);
         }
+        visitIfPresent(context.window(), WindowClause.class);
 
         return new QuerySpecification(
                 getLocation(context),

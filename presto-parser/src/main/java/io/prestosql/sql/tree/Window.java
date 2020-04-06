@@ -25,41 +25,29 @@ import static java.util.Objects.requireNonNull;
 public class Window
         extends Node
 {
-    private final List<Expression> partitionBy;
-    private final Optional<OrderBy> orderBy;
-    private final Optional<WindowFrame> frame;
+    private final Identifier name;
+    private final WindowSpecification windowSpecification;
 
-    public Window(List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
+    public Window(NodeLocation location, Identifier name, WindowSpecification windowSpecification)
     {
-        this(Optional.empty(), partitionBy, orderBy, frame);
+        this(Optional.of(location), name, windowSpecification);
     }
 
-    public Window(NodeLocation location, List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
-    {
-        this(Optional.of(location), partitionBy, orderBy, frame);
-    }
-
-    private Window(Optional<NodeLocation> location, List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
+    private Window(Optional<NodeLocation> location, Identifier name, WindowSpecification windowSpecification)
     {
         super(location);
-        this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-        this.orderBy = requireNonNull(orderBy, "orderBy is null");
-        this.frame = requireNonNull(frame, "frame is null");
+        this.name = requireNonNull(name, "name is null");
+        this.windowSpecification = requireNonNull(windowSpecification, "windowSpecification is null");
     }
 
-    public List<Expression> getPartitionBy()
+    public Identifier getName()
     {
-        return partitionBy;
+        return name;
     }
 
-    public Optional<OrderBy> getOrderBy()
+    public WindowSpecification getWindowSpecification()
     {
-        return orderBy;
-    }
-
-    public Optional<WindowFrame> getFrame()
-    {
-        return frame;
+        return windowSpecification;
     }
 
     @Override
@@ -71,11 +59,7 @@ public class Window
     @Override
     public List<Node> getChildren()
     {
-        ImmutableList.Builder<Node> nodes = ImmutableList.builder();
-        nodes.addAll(partitionBy);
-        orderBy.ifPresent(nodes::add);
-        frame.ifPresent(nodes::add);
-        return nodes.build();
+        return ImmutableList.of(name, windowSpecification);
     }
 
     @Override
@@ -88,24 +72,22 @@ public class Window
             return false;
         }
         Window o = (Window) obj;
-        return Objects.equals(partitionBy, o.partitionBy) &&
-                Objects.equals(orderBy, o.orderBy) &&
-                Objects.equals(frame, o.frame);
+        return Objects.equals(name, o.name) &&
+                Objects.equals(windowSpecification, o.windowSpecification);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(partitionBy, orderBy, frame);
+        return Objects.hash(name, windowSpecification);
     }
 
     @Override
     public String toString()
     {
         return toStringHelper(this)
-                .add("partitionBy", partitionBy)
-                .add("orderBy", orderBy)
-                .add("frame", frame)
+                .add("name", name)
+                .add("windowSpecification", windowSpecification)
                 .toString();
     }
 }
