@@ -471,9 +471,8 @@ public class KuduClientSession
         System.out.println("Properties " + properties);
         if (properties.containsKey(HIDDEN_COLUMN)) {
             System.out.println("Has key");
-            options.setExtraConfigs(ImmutableMap.of(HIDDEN_COLUMN, properties.get(HIDDEN_COLUMN) + ""));
+            options.setExtraConfigs(ImmutableMap.of("kudu.table_name", "my_kudu_table"));
         }
-
         return options;
     }
 
