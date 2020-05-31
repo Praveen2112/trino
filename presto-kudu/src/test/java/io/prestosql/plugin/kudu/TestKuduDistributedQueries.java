@@ -66,39 +66,9 @@ public class TestKuduDistributedQueries
     }
 
     @Override
-    public void testInsert()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testAddColumn()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testCreateTable()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testInsertUnicode()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
     public void testInsertWithCoercion()
     {
         // Override because of non-canonical varchar mapping
-    }
-
-    @Override
-    public void testDelete()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
     }
 
     @Override

@@ -69,6 +69,7 @@ public final class KuduTableProperties
     public static final String NULLABLE = "nullable";
     public static final String ENCODING = "encoding";
     public static final String COMPRESSION = "compression";
+    public static final String HIDDEN_COLUMN = "hidden_column";
 
     private static final ObjectMapper mapper = new ObjectMapper();
 

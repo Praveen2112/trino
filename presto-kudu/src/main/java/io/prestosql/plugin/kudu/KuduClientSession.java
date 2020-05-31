@@ -14,6 +14,7 @@
 package io.prestosql.plugin.kudu;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import io.airlift.log.Logger;
 import io.prestosql.plugin.kudu.properties.ColumnDesign;
 import io.prestosql.plugin.kudu.properties.HashPartitionDefinition;
@@ -65,6 +66,7 @@ import java.util.stream.IntStream;
 
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.prestosql.plugin.kudu.properties.KuduTableProperties.HIDDEN_COLUMN;
 import static io.prestosql.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.prestosql.spi.StandardErrorCode.QUERY_REJECTED;
 import static io.prestosql.spi.predicate.Marker.Bound.ABOVE;
@@ -464,6 +466,10 @@ public class KuduClientSession
 
         Optional<Integer> numReplicas = KuduTableProperties.getNumReplicas(properties);
         numReplicas.ifPresent(options::setNumReplicas);
+
+        if (properties.containsKey(HIDDEN_COLUMN)) {
+            options.setExtraConfigs(ImmutableMap.of(HIDDEN_COLUMN, "true"));
+        }
 
         return options;
     }

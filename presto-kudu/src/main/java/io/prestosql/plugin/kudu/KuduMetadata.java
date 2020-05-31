@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.prestosql.plugin.kudu.properties.KuduTableProperties.HIDDEN_COLUMN;
 import static java.util.Objects.requireNonNull;
 
 public class KuduMetadata
@@ -315,6 +316,7 @@ public class KuduMetadata
             Map<String, Object> propsCopy = new HashMap<>(tableMetadata.getProperties());
             propsCopy.put(KuduTableProperties.PARTITION_BY_HASH_COLUMNS, ImmutableList.of(rowId));
             propsCopy.put(KuduTableProperties.PARTITION_BY_HASH_BUCKETS, 2);
+            propsCopy.put(HIDDEN_COLUMN, true);
             Map<String, Object> finalProperties = ImmutableMap.copyOf(propsCopy);
             finalTableMetadata = new ConnectorTableMetadata(tableMetadata.getTable(),
                     finalColumns, finalProperties, tableMetadata.getComment());

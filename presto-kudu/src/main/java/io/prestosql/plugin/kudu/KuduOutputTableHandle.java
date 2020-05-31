@@ -68,7 +68,7 @@ public class KuduOutputTableHandle
     @JsonProperty
     public boolean isGenerateUUID()
     {
-        return generateUUID;
+        return Boolean.parseBoolean(table.getExtraConfig().getOrDefault("test", "false"));
     }
 
     @Override

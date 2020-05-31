@@ -23,6 +23,7 @@ import org.apache.kudu.client.KuduTable;
 
 import java.util.List;
 
+import static io.prestosql.plugin.kudu.properties.KuduTableProperties.HIDDEN_COLUMN;
 import static java.util.Objects.requireNonNull;
 
 public class KuduInsertTableHandle
@@ -72,7 +73,7 @@ public class KuduInsertTableHandle
     @Override
     public boolean isGenerateUUID()
     {
-        return false;
+        return Boolean.parseBoolean(table.getExtraConfig().getOrDefault(HIDDEN_COLUMN, "false"));
     }
 
     public KuduTable getTable(KuduClientSession session)
