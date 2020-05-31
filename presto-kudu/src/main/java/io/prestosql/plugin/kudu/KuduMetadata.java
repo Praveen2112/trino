@@ -223,7 +223,32 @@ public class KuduMetadata
     @Override
     public void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata, boolean ignoreExisting)
     {
-        clientSession.createTable(tableMetadata, ignoreExisting);
+        PartitionDesign design = KuduTableProperties.getPartitionDesign(tableMetadata.getProperties());
+        System.out.println("Has partition " + design.hasPartitions());
+        if (!design.hasPartitions()) {
+            String rowId = KuduColumnHandle.ROW_ID;
+            List<ColumnMetadata> copy = new ArrayList<>(tableMetadata.getColumns());
+            Map<String, Object> columnProperties = new HashMap<>();
+            columnProperties.put(KuduTableProperties.PRIMARY_KEY, true);
+            copy.add(0, ColumnMetadata.builder()
+                    .setName(rowId)
+                    .setType(VarcharType.VARCHAR)
+                    .setComment(Optional.of("key=true"))
+                    .setHidden(true)
+                    .setProperties(columnProperties)
+                    .build());
+            List<ColumnMetadata> finalColumns = ImmutableList.copyOf(copy);
+            Map<String, Object> propsCopy = new HashMap<>(tableMetadata.getProperties());
+            propsCopy.put(KuduTableProperties.PARTITION_BY_HASH_COLUMNS, ImmutableList.of(rowId));
+            propsCopy.put(KuduTableProperties.PARTITION_BY_HASH_BUCKETS, 2);
+            propsCopy.put(HIDDEN_COLUMN, true);
+            Map<String, Object> finalProperties = ImmutableMap.copyOf(propsCopy);
+            tableMetadata = new ConnectorTableMetadata(tableMetadata.getTable(),
+                    finalColumns, finalProperties, tableMetadata.getComment());
+        }
+
+        KuduTable table = clientSession.createTable(tableMetadata, ignoreExisting);
+        System.out.println("Table in create " + table.getExtraConfig());
     }
 
     @Override
@@ -300,6 +325,7 @@ public class KuduMetadata
         PartitionDesign design = KuduTableProperties.getPartitionDesign(tableMetadata.getProperties());
         boolean generateUUID = !design.hasPartitions();
         ConnectorTableMetadata finalTableMetadata = tableMetadata;
+        System.out.println("Has partition22 " + design.hasPartitions());
         if (generateUUID) {
             String rowId = KuduColumnHandle.ROW_ID;
             List<ColumnMetadata> copy = new ArrayList<>(tableMetadata.getColumns());
@@ -322,7 +348,7 @@ public class KuduMetadata
                     finalColumns, finalProperties, tableMetadata.getComment());
         }
         KuduTable table = clientSession.createTable(finalTableMetadata, false);
-
+        System.out.println("Table " + table.getExtraConfig());
         Schema schema = table.getSchema();
 
         List<ColumnSchema> columns = schema.getColumns();

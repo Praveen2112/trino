@@ -294,7 +294,9 @@ public class KuduClientSession
 
             Schema schema = buildSchema(columns, properties);
             CreateTableOptions options = buildCreateTableOptions(schema, properties);
-            return client.createTable(rawName, schema, options);
+            KuduTable table = client.createTable(rawName, schema, options);
+            System.out.println("Table config " + table.getExtraConfig());
+            return table;
         }
         catch (KuduException e) {
             throw new PrestoException(GENERIC_INTERNAL_ERROR, e);
@@ -466,9 +468,10 @@ public class KuduClientSession
 
         Optional<Integer> numReplicas = KuduTableProperties.getNumReplicas(properties);
         numReplicas.ifPresent(options::setNumReplicas);
-
+        System.out.println("Properties " + properties);
         if (properties.containsKey(HIDDEN_COLUMN)) {
-            options.setExtraConfigs(ImmutableMap.of(HIDDEN_COLUMN, "true"));
+            System.out.println("Has key");
+            options.setExtraConfigs(ImmutableMap.of(HIDDEN_COLUMN, properties.get(HIDDEN_COLUMN) + ""));
         }
 
         return options;

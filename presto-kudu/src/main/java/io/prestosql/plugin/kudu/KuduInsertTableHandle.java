@@ -73,6 +73,7 @@ public class KuduInsertTableHandle
     @Override
     public boolean isGenerateUUID()
     {
+        System.out.println("Generated UUID " + table.getExtraConfig().getOrDefault(HIDDEN_COLUMN, "false"));
         return Boolean.parseBoolean(table.getExtraConfig().getOrDefault(HIDDEN_COLUMN, "false"));
     }
 
