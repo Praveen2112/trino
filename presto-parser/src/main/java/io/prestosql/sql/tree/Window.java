@@ -25,27 +25,37 @@ import static java.util.Objects.requireNonNull;
 public class Window
         extends Node
 {
-    private final Identifier name;
-    private final WindowSpecification windowSpecification;
+    private final Optional<Identifier> name;
+    private final Optional<WindowSpecification> windowSpecification;
 
-    public Window(NodeLocation location, Identifier name, WindowSpecification windowSpecification)
+    public Window(WindowSpecification windowSpecification)
+    {
+        this(Optional.empty(), Optional.empty(), Optional.of(windowSpecification));
+    }
+
+    public Window(Identifier name, WindowSpecification windowSpecification)
+    {
+        this(Optional.empty(), Optional.of(name), Optional.of(windowSpecification));
+    }
+
+    public Window(NodeLocation location, Optional<Identifier> name, Optional<WindowSpecification> windowSpecification)
     {
         this(Optional.of(location), name, windowSpecification);
     }
 
-    private Window(Optional<NodeLocation> location, Identifier name, WindowSpecification windowSpecification)
+    public Window(Optional<NodeLocation> location, Optional<Identifier> name, Optional<WindowSpecification> windowSpecification)
     {
         super(location);
         this.name = requireNonNull(name, "name is null");
         this.windowSpecification = requireNonNull(windowSpecification, "windowSpecification is null");
     }
 
-    public Identifier getName()
+    public Optional<Identifier> getName()
     {
         return name;
     }
 
-    public WindowSpecification getWindowSpecification()
+    public Optional<WindowSpecification> getWindowSpecification()
     {
         return windowSpecification;
     }
@@ -59,7 +69,7 @@ public class Window
     @Override
     public List<Node> getChildren()
     {
-        return ImmutableList.of(name, windowSpecification);
+        return windowSpecification.map(WindowSpecification::getChildren).orElse(ImmutableList.of());
     }
 
     @Override

@@ -65,8 +65,7 @@ public class WindowSpecification
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return null;
-        //return visitor.visitWindowSpecification(this, context);
+        return visitor.visitWindowSpecification(this, context);
     }
 
     @Override

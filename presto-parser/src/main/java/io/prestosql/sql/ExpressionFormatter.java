@@ -89,6 +89,7 @@ import io.prestosql.sql.tree.TypeParameter;
 import io.prestosql.sql.tree.WhenClause;
 import io.prestosql.sql.tree.Window;
 import io.prestosql.sql.tree.WindowFrame;
+import io.prestosql.sql.tree.WindowSpecification;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -624,6 +625,18 @@ public final class ExpressionFormatter
 
         @Override
         public String visitWindow(Window node, Void context)
+        {
+            if (node.getWindowSpecification().isPresent()) {
+                return visitWindowSpecification(node.getWindowSpecification().get(), context);
+            }
+            if (node.getName().isPresent()) {
+                return visitIdentifier(node.getName().get(), context);
+            }
+            return "";
+        }
+
+        @Override
+        public String visitWindowSpecification(WindowSpecification node, Void context)
         {
             List<String> parts = new ArrayList<>();
 

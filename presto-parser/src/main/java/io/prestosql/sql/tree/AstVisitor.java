@@ -242,6 +242,11 @@ public abstract class AstVisitor<R, C>
         return visitQueryBody(node, context);
     }
 
+    protected R visitWindowSpecification(WindowSpecification node, C context)
+    {
+        return visitNode(node, context);
+    }
+
     protected R visitSetOperation(SetOperation node, C context)
     {
         return visitQueryBody(node, context);

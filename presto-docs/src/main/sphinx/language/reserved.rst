@@ -80,4 +80,5 @@ Keyword                        SQL:2016      SQL-92
 ``WHEN``                       reserved      reserved
 ``WHERE``                      reserved      reserved
 ``WITH``                       reserved      reserved
+``WINDOW``                     reserved      reserved
 ============================== ============= =============

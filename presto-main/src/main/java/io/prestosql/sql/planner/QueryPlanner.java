@@ -65,6 +65,7 @@ import io.prestosql.sql.tree.SymbolReference;
 import io.prestosql.sql.tree.Table;
 import io.prestosql.sql.tree.Window;
 import io.prestosql.sql.tree.WindowFrame;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.type.TypeCoercion;
 
 import java.util.ArrayList;
@@ -753,7 +754,13 @@ class QueryPlanner
         }
 
         for (FunctionCall windowFunction : windowFunctions) {
-            Window window = windowFunction.getWindow().get();
+            WindowSpecification window = null;
+            if (windowFunction.getWindow().get().getName().isPresent()) {
+                window = analysis.getWindowSpecification(windowFunction.getWindow().get().getName().get());
+            }
+            if (windowFunction.getWindow().get().getWindowSpecification().isPresent()) {
+                window = windowFunction.getWindow().get().getWindowSpecification().get();
+            }
 
             // Extract frame
             WindowFrame.Type frameType = WindowFrame.Type.RANGE;

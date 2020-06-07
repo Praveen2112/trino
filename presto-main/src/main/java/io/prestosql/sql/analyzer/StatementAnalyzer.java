@@ -149,7 +149,9 @@ import io.prestosql.sql.tree.Unnest;
 import io.prestosql.sql.tree.Use;
 import io.prestosql.sql.tree.Values;
 import io.prestosql.sql.tree.Window;
+import io.prestosql.sql.tree.WindowClause;
 import io.prestosql.sql.tree.WindowFrame;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.sql.tree.With;
 import io.prestosql.sql.tree.WithQuery;
 import io.prestosql.sql.util.AstUtils;
@@ -1699,7 +1701,7 @@ class StatementAnalyzer
                     throw semanticException(NOT_SUPPORTED, windowFunction, "Window function with ORDER BY is not supported");
                 }
 
-                Window window = windowFunction.getWindow().get();
+                WindowSpecification window = windowFunction.getWindow().get().getWindowSpecification().get();
 
                 ImmutableList.Builder<Node> toExtract = ImmutableList.builder();
                 toExtract.addAll(windowFunction.getArguments());
@@ -1799,6 +1801,18 @@ class StatementAnalyzer
                 }
 
                 analysis.setHaving(node, predicate);
+            }
+        }
+
+        private void analyzeWindowClause(QuerySpecification node, Scope scope)
+        {
+            if (node.getWindowClause().isPresent()) {
+                WindowClause windowClause = node.getWindowClause().get();
+                for (Window window : windowClause.getWindow()) {
+                    if (window.getName().isPresent()) {
+                        analysis.setWindowSpecification(window.getName().get(), window.getWindowSpecification().get());
+                    }
+                }
             }
         }
 

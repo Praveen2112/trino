@@ -151,6 +151,7 @@ import io.prestosql.sql.tree.Unnest;
 import io.prestosql.sql.tree.Values;
 import io.prestosql.sql.tree.WhenClause;
 import io.prestosql.sql.tree.Window;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.sql.tree.With;
 import io.prestosql.sql.tree.WithQuery;
 import org.testng.annotations.Test;
@@ -523,6 +524,7 @@ public class TestSqlParser
     {
         return new QuerySpecification(
                 selectList(new LongLiteral("123")),
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -2474,7 +2476,7 @@ public class TestSqlParser
                 new FunctionCall(
                         Optional.empty(),
                         QualifiedName.of("lead"),
-                        Optional.of(new Window(ImmutableList.of(), Optional.empty(), Optional.empty())),
+                        Optional.of(new Window(Optional.empty(), Optional.empty(), Optional.of(new WindowSpecification(ImmutableList.of(), Optional.empty(), Optional.empty())))),
                         Optional.empty(),
                         Optional.empty(),
                         false,
@@ -2484,7 +2486,7 @@ public class TestSqlParser
                 new FunctionCall(
                         Optional.empty(),
                         QualifiedName.of("lead"),
-                        Optional.of(new Window(ImmutableList.of(), Optional.empty(), Optional.empty())),
+                        Optional.of(new Window(Optional.empty(), Optional.empty(), Optional.of(new WindowSpecification(ImmutableList.of(), Optional.empty(), Optional.empty())))),
                         Optional.empty(),
                         Optional.empty(),
                         false,

@@ -885,7 +885,7 @@ public class ExpressionAnalyzer
         protected Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context)
         {
             if (node.getWindow().isPresent()) {
-                for (Expression expression : node.getWindow().get().getPartitionBy()) {
+                for (Expression expression : node.getWindow().get().getWindowSpecification().get().getPartitionBy()) {
                     process(expression, context);
                     Type type = getExpressionType(expression);
                     if (!type.isComparable()) {
@@ -893,7 +893,7 @@ public class ExpressionAnalyzer
                     }
                 }
 
-                for (SortItem sortItem : getSortItemsFromOrderBy(node.getWindow().get().getOrderBy())) {
+                for (SortItem sortItem : getSortItemsFromOrderBy(node.getWindow().get().getWindowSpecification().get().getOrderBy())) {
                     process(sortItem.getSortKey(), context);
                     Type type = getExpressionType(sortItem.getSortKey());
                     if (!type.isOrderable()) {
@@ -901,8 +901,8 @@ public class ExpressionAnalyzer
                     }
                 }
 
-                if (node.getWindow().get().getFrame().isPresent()) {
-                    WindowFrame frame = node.getWindow().get().getFrame().get();
+                if (node.getWindow().get().getWindowSpecification().get().getFrame().isPresent()) {
+                    WindowFrame frame = node.getWindow().get().getWindowSpecification().get().getFrame().get();
 
                     if (frame.getStart().getValue().isPresent()) {
                         Type type = process(frame.getStart().getValue().get(), context);

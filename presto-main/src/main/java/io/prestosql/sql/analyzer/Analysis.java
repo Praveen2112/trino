@@ -60,6 +60,7 @@ import io.prestosql.sql.tree.Statement;
 import io.prestosql.sql.tree.SubqueryExpression;
 import io.prestosql.sql.tree.Table;
 import io.prestosql.sql.tree.Unnest;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.transaction.TransactionId;
 
 import javax.annotation.Nullable;
@@ -120,6 +121,7 @@ public class Analysis
     private final Set<NodeRef<OrderBy>> redundantOrderBy = new HashSet<>();
     private final Map<NodeRef<Node>, List<SelectExpression>> selectExpressions = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> windowFunctions = new LinkedHashMap<>();
+    private final Map<NodeRef<Identifier>, WindowSpecification> windowSpecifications = new LinkedHashMap<>();
     private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions = new LinkedHashMap<>();
     private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
     private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
@@ -442,6 +444,16 @@ public class Analysis
     public List<FunctionCall> getWindowFunctions(QuerySpecification query)
     {
         return windowFunctions.get(NodeRef.of(query));
+    }
+
+    public void setWindowSpecification(Identifier identifier, WindowSpecification windowSpecification)
+    {
+        windowSpecifications.put(NodeRef.of(identifier), windowSpecification);
+    }
+
+    public WindowSpecification getWindowSpecification(Identifier identifier)
+    {
+        return windowSpecifications.get(NodeRef.of(identifier));
     }
 
     public void setOrderByWindowFunctions(OrderBy node, List<FunctionCall> functions)

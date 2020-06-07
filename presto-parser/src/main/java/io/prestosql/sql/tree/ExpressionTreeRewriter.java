@@ -484,57 +484,10 @@ public final class ExpressionTreeRewriter<C>
                 filter = Optional.of(newFilterExpression);
             }
 
-            Optional<Window> rewrittenWindow = node.getWindow();
-            if (node.getWindow().isPresent()) {
-                Window window = node.getWindow().get();
-
-                List<Expression> partitionBy = rewrite(window.getPartitionBy(), context);
-
-                Optional<OrderBy> orderBy = Optional.empty();
-                if (window.getOrderBy().isPresent()) {
-                    orderBy = Optional.of(rewriteOrderBy(window.getOrderBy().get(), context));
-                }
-
-                Optional<WindowFrame> rewrittenFrame = window.getFrame();
-                if (rewrittenFrame.isPresent()) {
-                    WindowFrame frame = rewrittenFrame.get();
-
-                    FrameBound start = frame.getStart();
-                    if (start.getValue().isPresent()) {
-                        Expression value = rewrite(start.getValue().get(), context.get());
-                        if (value != start.getValue().get()) {
-                            start = new FrameBound(start.getType(), value);
-                        }
-                    }
-
-                    Optional<FrameBound> rewrittenEnd = frame.getEnd();
-                    if (rewrittenEnd.isPresent()) {
-                        Optional<Expression> value = rewrittenEnd.get().getValue();
-                        if (value.isPresent()) {
-                            Expression rewrittenValue = rewrite(value.get(), context.get());
-                            if (rewrittenValue != value.get()) {
-                                rewrittenEnd = Optional.of(new FrameBound(rewrittenEnd.get().getType(), rewrittenValue));
-                            }
-                        }
-                    }
-
-                    if ((frame.getStart() != start) || !sameElements(frame.getEnd(), rewrittenEnd)) {
-                        rewrittenFrame = Optional.of(new WindowFrame(frame.getType(), start, rewrittenEnd));
-                    }
-                }
-
-                if (!sameElements(window.getPartitionBy(), partitionBy) ||
-                        !sameElements(window.getOrderBy(), orderBy) ||
-                        !sameElements(window.getFrame(), rewrittenFrame)) {
-                    rewrittenWindow = Optional.of(new Window(partitionBy, orderBy, rewrittenFrame));
-                }
-            }
-
             List<Expression> arguments = rewrite(node.getArguments(), context);
 
-            if (!sameElements(node.getArguments(), arguments) || !sameElements(rewrittenWindow, node.getWindow())
-                    || !sameElements(filter, node.getFilter())) {
-                return new FunctionCall(node.getLocation(), node.getName(), rewrittenWindow, filter, node.getOrderBy().map(orderBy -> rewriteOrderBy(orderBy, context)), node.isDistinct(), node.getNullTreatment(), arguments);
+            if (!sameElements(node.getArguments(), arguments) || !sameElements(filter, node.getFilter())) {
+                return new FunctionCall(node.getLocation(), node.getName(), node.getWindow(), filter, node.getOrderBy().map(orderBy -> rewriteOrderBy(orderBy, context)), node.isDistinct(), node.getNullTreatment(), arguments);
             }
             return node;
         }

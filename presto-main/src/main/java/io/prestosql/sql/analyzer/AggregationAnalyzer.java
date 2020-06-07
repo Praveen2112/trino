@@ -420,7 +420,7 @@ class AggregationAnalyzer
         @Override
         protected Boolean visitWindow(Window node, Void context)
         {
-            for (Expression expression : node.getPartitionBy()) {
+            for (Expression expression : node.getWindowSpecification().get().getPartitionBy()) {
                 if (!process(expression, context)) {
                     throw semanticException(EXPRESSION_NOT_AGGREGATE,
                             expression,
@@ -429,7 +429,7 @@ class AggregationAnalyzer
                 }
             }
 
-            for (SortItem sortItem : getSortItemsFromOrderBy(node.getOrderBy())) {
+            for (SortItem sortItem : getSortItemsFromOrderBy(node.getWindowSpecification().get().getOrderBy())) {
                 Expression expression = sortItem.getSortKey();
                 if (!process(expression, context)) {
                     throw semanticException(EXPRESSION_NOT_AGGREGATE,
@@ -439,8 +439,8 @@ class AggregationAnalyzer
                 }
             }
 
-            if (node.getFrame().isPresent()) {
-                process(node.getFrame().get(), context);
+            if (node.getWindowSpecification().get().getFrame().isPresent()) {
+                process(node.getWindowSpecification().get().getFrame().get(), context);
             }
 
             return true;
