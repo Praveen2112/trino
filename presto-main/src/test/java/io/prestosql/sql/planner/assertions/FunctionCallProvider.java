@@ -130,7 +130,7 @@ class FunctionCallProvider
 
             return Objects.equals(name, other.getName()) &&
                     other.getWindow().isPresent() &&
-                    Objects.equals(frame, other.getWindow().get().getWindowSpecification().get().getFrame()) &&
+                    Objects.equals(frame, other.getWindow().get().getFrame()) &&
                     Objects.equals(distinct, other.isDistinct()) &&
                     Objects.equals(getArguments(), other.getArguments());
         }

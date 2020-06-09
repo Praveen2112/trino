@@ -18,7 +18,10 @@ import com.google.common.collect.ImmutableMap;
 import io.prestosql.spi.type.RowType;
 import io.prestosql.sql.tree.AllColumns;
 import io.prestosql.sql.tree.Expression;
+import io.prestosql.sql.tree.Identifier;
+import io.prestosql.sql.tree.NodeRef;
 import io.prestosql.sql.tree.QualifiedName;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.sql.tree.WithQuery;
 
 import javax.annotation.concurrent.Immutable;
@@ -48,6 +51,7 @@ public class Scope
     private final RelationId relationId;
     private final RelationType relation;
     private final Map<String, WithQuery> namedQueries;
+    private final Map<NodeRef<Identifier>, WindowSpecification> windowSpecificationMap;
 
     public static Scope create()
     {
@@ -64,13 +68,15 @@ public class Scope
             boolean queryBoundary,
             RelationId relationId,
             RelationType relation,
-            Map<String, WithQuery> namedQueries)
+            Map<String, WithQuery> namedQueries,
+            Map<NodeRef<Identifier>, WindowSpecification> windowSpecificationMap)
     {
         this.parent = requireNonNull(parent, "parent is null");
         this.relationId = requireNonNull(relationId, "relationId is null");
         this.queryBoundary = queryBoundary;
         this.relation = requireNonNull(relation, "relation is null");
         this.namedQueries = ImmutableMap.copyOf(requireNonNull(namedQueries, "namedQueries is null"));
+        this.windowSpecificationMap = windowSpecificationMap;
     }
 
     public Optional<Scope> getOuterQueryParent()
@@ -103,6 +109,11 @@ public class Scope
     public RelationType getRelationType()
     {
         return relation;
+    }
+
+    public WindowSpecification resolveWindowSpec(Identifier identifier)
+    {
+        return windowSpecificationMap.get(NodeRef.of(identifier));
     }
 
     /**
@@ -287,6 +298,7 @@ public class Scope
         private RelationId relationId = RelationId.anonymous();
         private RelationType relationType = new RelationType();
         private final Map<String, WithQuery> namedQueries = new HashMap<>();
+        private final Map<NodeRef<Identifier>, WindowSpecification> windowSpecificationMap = new HashMap<>();
         private Optional<Scope> parent = Optional.empty();
         private boolean queryBoundary;
 
@@ -319,6 +331,12 @@ public class Scope
             return this;
         }
 
+        public Builder withWindowSpecification(Identifier name, WindowSpecification withQuery)
+        {
+            windowSpecificationMap.put(NodeRef.of(name), withQuery);
+            return this;
+        }
+
         public boolean containsNamedQuery(String name)
         {
             return namedQueries.containsKey(name);
@@ -326,7 +344,7 @@ public class Scope
 
         public Scope build()
         {
-            return new Scope(parent, queryBoundary, relationId, relationType, namedQueries);
+            return new Scope(parent, queryBoundary, relationId, relationType, namedQueries, windowSpecificationMap);
         }
     }
 

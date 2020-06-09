@@ -25,7 +25,7 @@ public class FunctionCall
         extends Expression
 {
     private final QualifiedName name;
-    private final Optional<Window> window;
+    private final Optional<WindowSpecification> window;
     private final Optional<Expression> filter;
     private final Optional<OrderBy> orderBy;
     private final boolean distinct;
@@ -45,7 +45,7 @@ public class FunctionCall
     public FunctionCall(
             Optional<NodeLocation> location,
             QualifiedName name,
-            Optional<Window> window,
+            Optional<WindowSpecification> window,
             Optional<Expression> filter,
             Optional<OrderBy> orderBy,
             boolean distinct,
@@ -74,7 +74,7 @@ public class FunctionCall
         return name;
     }
 
-    public Optional<Window> getWindow()
+    public Optional<WindowSpecification> getWindow()
     {
         return window;
     }

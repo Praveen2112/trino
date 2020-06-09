@@ -189,7 +189,7 @@ querySpecification
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
-      (WINDOW window (',' window))?
+      (WINDOW windowClause)?
     ;
 
 groupBy
@@ -206,6 +206,10 @@ groupingElement
 groupingSet
     : '(' (expression (',' expression)*)? ')'
     | expression
+    ;
+
+windowClause
+    : window (',' window)*
     ;
 
 window
@@ -445,8 +449,7 @@ filter
 
 over
     : OVER
-      identifier?
-      windowSpecification?
+      windowSpecification
     ;
 
 explainOption

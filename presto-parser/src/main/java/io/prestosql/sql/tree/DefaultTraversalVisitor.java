@@ -223,17 +223,17 @@ public abstract class DefaultTraversalVisitor<C>
     @Override
     public Void visitWindow(Window node, C context)
     {
-        if (node.getWindowSpecification().isPresent()) {
-            process(node.getWindowSpecification().get(), context);
-        }
+        process(node.getWindowSpecification(), context);
         return null;
     }
 
     @Override
-    public R visitWindowSpecification(WindowSpecification node, C context)
+    public Void visitWindowSpecification(WindowSpecification node, C context)
     {
-        for (Expression expression : node.getPartitionBy()) {
-            process(expression, context);
+        if (node.getPartitionBy().isPresent()) {
+            for (Expression expression : node.getPartitionBy().get()) {
+                process(expression, context);
+            }
         }
 
         if (node.getOrderBy().isPresent()) {

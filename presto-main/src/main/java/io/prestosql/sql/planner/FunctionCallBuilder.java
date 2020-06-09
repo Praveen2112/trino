@@ -22,7 +22,7 @@ import io.prestosql.sql.tree.FunctionCall;
 import io.prestosql.sql.tree.NodeLocation;
 import io.prestosql.sql.tree.OrderBy;
 import io.prestosql.sql.tree.QualifiedName;
-import io.prestosql.sql.tree.Window;
+import io.prestosql.sql.tree.WindowSpecification;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +38,7 @@ public class FunctionCallBuilder
     private List<TypeSignature> argumentTypes = new ArrayList<>();
     private List<Expression> argumentValues = new ArrayList<>();
     private Optional<NodeLocation> location = Optional.empty();
-    private Optional<Window> window = Optional.empty();
+    private Optional<WindowSpecification> window = Optional.empty();
     private Optional<Expression> filter = Optional.empty();
     private Optional<OrderBy> orderBy = Optional.empty();
     private boolean distinct;
@@ -86,13 +86,13 @@ public class FunctionCallBuilder
         return this;
     }
 
-    public FunctionCallBuilder setWindow(Window window)
+    public FunctionCallBuilder setWindow(WindowSpecification window)
     {
         this.window = Optional.of(requireNonNull(window, "window is null"));
         return this;
     }
 
-    public FunctionCallBuilder setWindow(Optional<Window> window)
+    public FunctionCallBuilder setWindow(Optional<WindowSpecification> window)
     {
         this.window = requireNonNull(window, "window is null");
         return this;

@@ -121,7 +121,7 @@ public class Analysis
     private final Set<NodeRef<OrderBy>> redundantOrderBy = new HashSet<>();
     private final Map<NodeRef<Node>, List<SelectExpression>> selectExpressions = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> windowFunctions = new LinkedHashMap<>();
-    private final Map<NodeRef<Identifier>, WindowSpecification> windowSpecifications = new LinkedHashMap<>();
+    private final Map<Identifier, WindowSpecification> windowSpecifications = new LinkedHashMap<>();
     private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions = new LinkedHashMap<>();
     private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
     private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
@@ -448,12 +448,12 @@ public class Analysis
 
     public void setWindowSpecification(Identifier identifier, WindowSpecification windowSpecification)
     {
-        windowSpecifications.put(NodeRef.of(identifier), windowSpecification);
+        windowSpecifications.put((identifier), windowSpecification);
     }
 
     public WindowSpecification getWindowSpecification(Identifier identifier)
     {
-        return windowSpecifications.get(NodeRef.of(identifier));
+        return windowSpecifications.get((identifier));
     }
 
     public void setOrderByWindowFunctions(OrderBy node, List<FunctionCall> functions)

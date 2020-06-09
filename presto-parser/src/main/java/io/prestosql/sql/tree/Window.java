@@ -25,37 +25,32 @@ import static java.util.Objects.requireNonNull;
 public class Window
         extends Node
 {
-    private final Optional<Identifier> name;
-    private final Optional<WindowSpecification> windowSpecification;
+    private final Identifier windowName;
+    private final WindowSpecification windowSpecification;
 
-    public Window(WindowSpecification windowSpecification)
+    public Window(Identifier windowName, WindowSpecification windowSpecification)
     {
-        this(Optional.empty(), Optional.empty(), Optional.of(windowSpecification));
+        this(Optional.empty(), windowName, windowSpecification);
     }
 
-    public Window(Identifier name, WindowSpecification windowSpecification)
+    public Window(NodeLocation location, Identifier windowName, WindowSpecification windowSpecification)
     {
-        this(Optional.empty(), Optional.of(name), Optional.of(windowSpecification));
+        this(Optional.of(location), windowName, windowSpecification);
     }
 
-    public Window(NodeLocation location, Optional<Identifier> name, Optional<WindowSpecification> windowSpecification)
-    {
-        this(Optional.of(location), name, windowSpecification);
-    }
-
-    public Window(Optional<NodeLocation> location, Optional<Identifier> name, Optional<WindowSpecification> windowSpecification)
+    public Window(Optional<NodeLocation> location, Identifier windowName, WindowSpecification windowSpecification)
     {
         super(location);
-        this.name = requireNonNull(name, "name is null");
+        this.windowName = requireNonNull(windowName, "windowName is null");
         this.windowSpecification = requireNonNull(windowSpecification, "windowSpecification is null");
     }
 
-    public Optional<Identifier> getName()
+    public Identifier getWindowName()
     {
-        return name;
+        return windowName;
     }
 
-    public Optional<WindowSpecification> getWindowSpecification()
+    public WindowSpecification getWindowSpecification()
     {
         return windowSpecification;
     }
@@ -69,7 +64,7 @@ public class Window
     @Override
     public List<Node> getChildren()
     {
-        return windowSpecification.map(WindowSpecification::getChildren).orElse(ImmutableList.of());
+        return ImmutableList.of(windowSpecification);
     }
 
     @Override
@@ -82,21 +77,21 @@ public class Window
             return false;
         }
         Window o = (Window) obj;
-        return Objects.equals(name, o.name) &&
+        return Objects.equals(windowName, o.windowName) &&
                 Objects.equals(windowSpecification, o.windowSpecification);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(name, windowSpecification);
+        return Objects.hash(windowName, windowSpecification);
     }
 
     @Override
     public String toString()
     {
         return toStringHelper(this)
-                .add("name", name)
+                .add("windowName", windowName)
                 .add("windowSpecification", windowSpecification)
                 .toString();
     }

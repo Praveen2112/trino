@@ -388,7 +388,7 @@ public final class ExpressionFormatter
             }
 
             if (node.getWindow().isPresent()) {
-                builder.append(" OVER ").append(visitWindow(node.getWindow().get(), context));
+                builder.append(" OVER ").append(visitWindowSpecification(node.getWindow().get(), context));
             }
 
             return builder.toString();
@@ -626,13 +626,7 @@ public final class ExpressionFormatter
         @Override
         public String visitWindow(Window node, Void context)
         {
-            if (node.getWindowSpecification().isPresent()) {
-                return visitWindowSpecification(node.getWindowSpecification().get(), context);
-            }
-            if (node.getName().isPresent()) {
-                return visitIdentifier(node.getName().get(), context);
-            }
-            return "";
+            return visitWindowSpecification(node.getWindowSpecification(), context);
         }
 
         @Override
@@ -640,8 +634,8 @@ public final class ExpressionFormatter
         {
             List<String> parts = new ArrayList<>();
 
-            if (!node.getPartitionBy().isEmpty()) {
-                parts.add("PARTITION BY " + joinExpressions(node.getPartitionBy()));
+            if (node.getPartitionBy().isPresent() && !node.getPartitionBy().get().isEmpty()) {
+                parts.add("PARTITION BY " + joinExpressions(node.getPartitionBy().get()));
             }
             if (node.getOrderBy().isPresent()) {
                 parts.add(formatOrderBy(node.getOrderBy().get()));

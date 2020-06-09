@@ -105,7 +105,7 @@ import io.prestosql.sql.tree.TimeLiteral;
 import io.prestosql.sql.tree.TimestampLiteral;
 import io.prestosql.sql.tree.TryExpression;
 import io.prestosql.sql.tree.WhenClause;
-import io.prestosql.sql.tree.WindowFrame;
+import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.type.FunctionType;
 import io.prestosql.type.TypeCoercion;
 
@@ -150,7 +150,6 @@ import static io.prestosql.spi.type.TinyintType.TINYINT;
 import static io.prestosql.spi.type.VarbinaryType.VARBINARY;
 import static io.prestosql.spi.type.VarcharType.VARCHAR;
 import static io.prestosql.spi.type.Varchars.isVarcharType;
-import static io.prestosql.sql.NodeUtils.getSortItemsFromOrderBy;
 import static io.prestosql.sql.analyzer.Analyzer.verifyNoAggregateWindowOrGroupingFunctions;
 import static io.prestosql.sql.analyzer.ExpressionTreeUtils.extractLocation;
 import static io.prestosql.sql.analyzer.SemanticExceptions.missingAttributeException;
@@ -196,10 +195,15 @@ public class ExpressionAnalyzer
     private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
     private final Map<NodeRef<Expression>, FieldId> columnReferences = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
+
+    private final Map<NodeRef<Identifier>, WindowSpecification> windowClauses = new LinkedHashMap<>();
+
     private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons = new LinkedHashSet<>();
     // For lambda argument references, maps each QualifiedNameReference to the referenced LambdaArgumentDeclaration
     private final Map<NodeRef<Identifier>, LambdaArgumentDeclaration> lambdaArgumentReferences = new LinkedHashMap<>();
     private final Set<NodeRef<FunctionCall>> windowFunctions = new LinkedHashSet<>();
+
+    private final Set<NodeRef<WindowSpecification>> windowSpecifications = new LinkedHashSet<>();
     private final Multimap<QualifiedObjectName, String> tableColumnReferences = HashMultimap.create();
 
     // Track referenced fields from source relation node
@@ -318,6 +322,11 @@ public class ExpressionAnalyzer
     public Set<NodeRef<FunctionCall>> getWindowFunctions()
     {
         return unmodifiableSet(windowFunctions);
+    }
+
+    public Set<NodeRef<WindowSpecification>> getWindowSpecifications()
+    {
+        return unmodifiableSet(windowSpecifications);
     }
 
     public Multimap<QualifiedObjectName, String> getTableColumnReferences()
@@ -885,40 +894,7 @@ public class ExpressionAnalyzer
         protected Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context)
         {
             if (node.getWindow().isPresent()) {
-                for (Expression expression : node.getWindow().get().getWindowSpecification().get().getPartitionBy()) {
-                    process(expression, context);
-                    Type type = getExpressionType(expression);
-                    if (!type.isComparable()) {
-                        throw semanticException(TYPE_MISMATCH, node, "%s is not comparable, and therefore cannot be used in window function PARTITION BY", type);
-                    }
-                }
-
-                for (SortItem sortItem : getSortItemsFromOrderBy(node.getWindow().get().getWindowSpecification().get().getOrderBy())) {
-                    process(sortItem.getSortKey(), context);
-                    Type type = getExpressionType(sortItem.getSortKey());
-                    if (!type.isOrderable()) {
-                        throw semanticException(TYPE_MISMATCH, node, "%s is not orderable, and therefore cannot be used in window function ORDER BY", type);
-                    }
-                }
-
-                if (node.getWindow().get().getWindowSpecification().get().getFrame().isPresent()) {
-                    WindowFrame frame = node.getWindow().get().getWindowSpecification().get().getFrame().get();
-
-                    if (frame.getStart().getValue().isPresent()) {
-                        Type type = process(frame.getStart().getValue().get(), context);
-                        if (!type.equals(INTEGER) && !type.equals(BIGINT)) {
-                            throw semanticException(TYPE_MISMATCH, node, "Window frame start value type must be INTEGER or BIGINT(actual %s)", type);
-                        }
-                    }
-
-                    if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
-                        Type type = process(frame.getEnd().get().getValue().get(), context);
-                        if (!type.equals(INTEGER) && !type.equals(BIGINT)) {
-                            throw semanticException(TYPE_MISMATCH, node, "Window frame end value type must be INTEGER or BIGINT (actual %s)", type);
-                        }
-                    }
-                }
-
+                windowSpecifications.add(NodeRef.of(node.getWindow().get()));
                 windowFunctions.add(NodeRef.of(node));
             }
 

@@ -194,6 +194,7 @@ import static io.prestosql.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static io.prestosql.spi.StandardErrorCode.INVALID_ROW_FILTER;
 import static io.prestosql.spi.StandardErrorCode.INVALID_VIEW;
 import static io.prestosql.spi.StandardErrorCode.INVALID_WINDOW_FRAME;
+import static io.prestosql.spi.StandardErrorCode.INVALID_WINDOW_SPECIFICATION;
 import static io.prestosql.spi.StandardErrorCode.MISMATCHED_COLUMN_ALIASES;
 import static io.prestosql.spi.StandardErrorCode.MISSING_COLUMN_NAME;
 import static io.prestosql.spi.StandardErrorCode.MISSING_GROUP_BY;
@@ -213,6 +214,7 @@ import static io.prestosql.spi.StandardErrorCode.VIEW_IS_STALE;
 import static io.prestosql.spi.connector.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static io.prestosql.spi.type.BigintType.BIGINT;
 import static io.prestosql.spi.type.BooleanType.BOOLEAN;
+import static io.prestosql.spi.type.IntegerType.INTEGER;
 import static io.prestosql.spi.type.VarcharType.VARCHAR;
 import static io.prestosql.sql.NodeUtils.getSortItemsFromOrderBy;
 import static io.prestosql.sql.NodeUtils.mapFromProperties;
@@ -1286,6 +1288,7 @@ class StatementAnalyzer
             Scope sourceScope = analyzeFrom(node, scope);
 
             node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
+            analyzeWindowClause(node, sourceScope);
 
             List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
             List<Expression> groupByExpressions = analyzeGroupBy(node, sourceScope, outputExpressions);
@@ -1701,11 +1704,11 @@ class StatementAnalyzer
                     throw semanticException(NOT_SUPPORTED, windowFunction, "Window function with ORDER BY is not supported");
                 }
 
-                WindowSpecification window = windowFunction.getWindow().get().getWindowSpecification().get();
+                WindowSpecification window = windowFunction.getWindow().get();
 
                 ImmutableList.Builder<Node> toExtract = ImmutableList.builder();
                 toExtract.addAll(windowFunction.getArguments());
-                toExtract.addAll(window.getPartitionBy());
+                toExtract.addAll(window.getPartitionBy().get());
                 window.getOrderBy().ifPresent(orderBy -> toExtract.addAll(orderBy.getSortItems()));
                 window.getFrame().ifPresent(toExtract::add);
 
@@ -1750,6 +1753,21 @@ class StatementAnalyzer
             }
 
             return windowFunctions;
+        }
+
+        private void analyzeWindowSpecification(WindowSpecification windowSpecification)
+        {
+            if (windowSpecification.getExistingWindowName().isPresent()) {
+                if (windowSpecification.getPartitionBy().isPresent()) {
+                    throw semanticException(INVALID_WINDOW_SPECIFICATION, windowSpecification, "PARTITION BY clause is already specified by %s", windowSpecification.getExistingWindowName().get());
+                }
+                if (analysis.getWindowSpecification(windowSpecification.getExistingWindowName().get()).getOrderBy().isPresent()) {
+                    throw semanticException(INVALID_WINDOW_SPECIFICATION, windowSpecification, "ORDER BY clause is already specified by: %s", windowSpecification.getExistingWindowName().get());
+                }
+                if (windowSpecification.getExistingWindowName().isPresent() && analysis.getWindowSpecification(windowSpecification.getExistingWindowName().get()).getFrame().isPresent()) {
+                    throw semanticException(INVALID_WINDOW_SPECIFICATION, windowSpecification, "WINDOW FRAME shouldn't be specified: %s", windowSpecification.getExistingWindowName().get());
+                }
+            }
         }
 
         private void analyzeWindowFrame(WindowFrame frame)
@@ -1809,11 +1827,62 @@ class StatementAnalyzer
             if (node.getWindowClause().isPresent()) {
                 WindowClause windowClause = node.getWindowClause().get();
                 for (Window window : windowClause.getWindow()) {
-                    if (window.getName().isPresent()) {
-                        analysis.setWindowSpecification(window.getName().get(), window.getWindowSpecification().get());
+                    if (window.getWindowSpecification().getExistingWindowName().isPresent()) {
+                        analysis.setWindowSpecification(window.getWindowName(), resolveWindowSepcification(window.getWindowSpecification()));
+                        WindowSpecification windowSpecification = window.getWindowSpecification();
+                        for (Expression expression : windowSpecification.getPartitionBy().get()) {
+                            ExpressionAnalysis analysis = analyzeExpression(expression, scope);
+                            Type type = analysis.getType(expression);
+                            if (!type.isComparable()) {
+                                throw semanticException(TYPE_MISMATCH, node, "%s is not comparable, and therefore cannot be used in window function PARTITION BY", type);
+                            }
+                        }
+
+                        for (SortItem sortItem : getSortItemsFromOrderBy(windowSpecification.getOrderBy())) {
+                            ExpressionAnalysis analysis = analyzeExpression(sortItem.getSortKey(), scope);
+                            Type type = analysis.getType(sortItem.getSortKey());
+                            if (!type.isOrderable()) {
+                                throw semanticException(TYPE_MISMATCH, node, "%s is not orderable, and therefore cannot be used in window function ORDER BY", type);
+                            }
+                        }
+
+                        if (windowSpecification.getFrame().isPresent()) {
+                            WindowFrame frame = windowSpecification.getFrame().get();
+
+                            if (frame.getStart().getValue().isPresent()) {
+                                ExpressionAnalysis analysis = analyzeExpression(frame.getStart().getValue().get(), scope);
+                                Type type = analysis.getType(frame.getStart().getValue().get());
+                                if (!type.equals(INTEGER) && !type.equals(BIGINT)) {
+                                    throw semanticException(TYPE_MISMATCH, node, "Window frame start value type must be INTEGER or BIGINT(actual %s)", type);
+                                }
+                            }
+
+                            if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
+                                ExpressionAnalysis analysis = analyzeExpression(frame.getEnd().get().getValue().get(), scope);
+                                Type type = analysis.getType(frame.getEnd().get().getValue().get());
+                                if (!type.equals(INTEGER) && !type.equals(BIGINT)) {
+                                    throw semanticException(TYPE_MISMATCH, node, "Window frame end value type must be INTEGER or BIGINT (actual %s)", type);
+                                }
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        private WindowSpecification resolveWindowSepcification(WindowSpecification window)
+        {
+            WindowSpecification baseWindowSpecification = window;
+            if (window.getExistingWindowName().isPresent()) {
+                baseWindowSpecification = analysis.getWindowSpecification(window.getExistingWindowName().get());
+            }
+            if (window.getOrderBy().isPresent()) {
+                baseWindowSpecification = new WindowSpecification(Optional.empty(), baseWindowSpecification.getPartitionBy(), window.getOrderBy(), baseWindowSpecification.getFrame());
+            }
+            if (window.getFrame().isPresent()) {
+                baseWindowSpecification = new WindowSpecification(Optional.empty(), baseWindowSpecification.getPartitionBy(), baseWindowSpecification.getOrderBy(), window.getFrame());
+            }
+            return baseWindowSpecification;
         }
 
         private Multimap<QualifiedName, Expression> extractNamedOutputExpressions(Select node)

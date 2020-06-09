@@ -702,11 +702,6 @@ class AstBuilder
 
             from = Optional.of(relation);
         }
-        List<Window> windows = visit(context.window(), Window.class);
-
-        if (!windows.isEmpty()) {
-            windowClause = Optional.of(new WindowClause(getLocation(context), windows));
-        }
 
         return new QuerySpecification(
                 getLocation(context),
@@ -715,10 +710,16 @@ class AstBuilder
                 visitIfPresent(context.where, Expression.class),
                 visitIfPresent(context.groupBy(), GroupBy.class),
                 visitIfPresent(context.having, Expression.class),
-                windowClause,
+                visitIfPresent(context.windowClause(), WindowClause.class),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty());
+    }
+
+    @Override
+    public Node visitWindow(SqlBaseParser.WindowContext context)
+    {
+        return new Window(getLocation(context), (Identifier) visit(context.identifier()), (WindowSpecification) visit(context.windowSpecification()));
     }
 
     @Override
@@ -1549,7 +1550,7 @@ class AstBuilder
     public Node visitFunctionCall(SqlBaseParser.FunctionCallContext context)
     {
         Optional<Expression> filter = visitIfPresent(context.filter(), Expression.class);
-        Optional<Window> window = visitIfPresent(context.over(), Window.class);
+        Optional<WindowSpecification> window = visitIfPresent(context.over(), WindowSpecification.class);
 
         Optional<OrderBy> orderBy = Optional.empty();
         if (context.ORDER() != null) {
@@ -1682,33 +1683,20 @@ class AstBuilder
         return visit(context.booleanExpression());
     }
 
-/*    @Override
-    public Node visitOver(SqlBaseParser.OverContext context)
-    {
-        Optional<OrderBy> orderBy = Optional.empty();
-        if (context.ORDER() != null) {
-            orderBy = Optional.of(new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
-        }
-
-        return new Window(
-                getLocation(context),
-                visit(context.partition, Expression.class),
-                orderBy,
-                visitIfPresent(context.windowFrame(), WindowFrame.class));
-    }*/
-
     @Override
     public Node visitOver(SqlBaseParser.OverContext context)
     {
-        return new Window(
-                getLocation(context),
-                visitIfPresent(context.identifier(), Identifier.class),
-                visitIfPresent(context.windowSpecification(), WindowSpecification.class));
+        return visit(context.windowSpecification());
     }
 
     @Override
     public Node visitWindowSpecification(SqlBaseParser.WindowSpecificationContext context)
     {
+        Optional<Identifier> existingName = visitIfPresent(context.identifier(), Identifier.class);
+        Optional<List<Expression>> partitionBy = Optional.empty();
+        if (context.PARTITION() != null) {
+            partitionBy = Optional.of(visit(context.partition, Expression.class));
+        }
         Optional<OrderBy> orderBy = Optional.empty();
         if (context.ORDER() != null) {
             orderBy = Optional.of(new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
@@ -1716,7 +1704,8 @@ class AstBuilder
 
         return new WindowSpecification(
                 getLocation(context),
-                visit(context.partition, Expression.class),
+                existingName,
+                partitionBy,
                 orderBy,
                 visitIfPresent(context.windowFrame(), WindowFrame.class));
     }

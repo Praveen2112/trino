@@ -63,7 +63,6 @@ import io.prestosql.sql.tree.QuerySpecification;
 import io.prestosql.sql.tree.SortItem;
 import io.prestosql.sql.tree.SymbolReference;
 import io.prestosql.sql.tree.Table;
-import io.prestosql.sql.tree.Window;
 import io.prestosql.sql.tree.WindowFrame;
 import io.prestosql.sql.tree.WindowSpecification;
 import io.prestosql.type.TypeCoercion;
@@ -754,13 +753,18 @@ class QueryPlanner
         }
 
         for (FunctionCall windowFunction : windowFunctions) {
-            WindowSpecification window = null;
-            if (windowFunction.getWindow().get().getName().isPresent()) {
-                window = analysis.getWindowSpecification(windowFunction.getWindow().get().getName().get());
+            WindowSpecification window = windowFunction.getWindow().get();
+            WindowSpecification baseWindowSpecification = window;
+            if (windowFunction.getWindow().get().getExistingWindowName().isPresent()) {
+                baseWindowSpecification = analysis.getWindowSpecification(windowFunction.getWindow().get().getExistingWindowName().get());
             }
-            if (windowFunction.getWindow().get().getWindowSpecification().isPresent()) {
-                window = windowFunction.getWindow().get().getWindowSpecification().get();
+            if (window.getOrderBy().isPresent()) {
+                baseWindowSpecification = new WindowSpecification(Optional.empty(), baseWindowSpecification.getPartitionBy(), window.getOrderBy(), baseWindowSpecification.getFrame());
             }
+            if (window.getFrame().isPresent()) {
+                baseWindowSpecification = new WindowSpecification(Optional.empty(), baseWindowSpecification.getPartitionBy(), baseWindowSpecification.getOrderBy(), window.getFrame());
+            }
+            window = baseWindowSpecification;
 
             // Extract frame
             WindowFrame.Type frameType = WindowFrame.Type.RANGE;
@@ -787,7 +791,7 @@ class QueryPlanner
                     .addAll(windowFunction.getArguments().stream()
                             .filter(argument -> !(argument instanceof LambdaExpression)) // lambda expression is generated at execution time
                             .collect(Collectors.toList()))
-                    .addAll(window.getPartitionBy())
+                    .addAll(window.getPartitionBy().get())
                     .addAll(getSortItemsFromOrderBy(window.getOrderBy()).stream()
                             .map(SortItem::getSortKey)
                             .iterator());
@@ -803,7 +807,7 @@ class QueryPlanner
 
             // Rewrite PARTITION BY in terms of pre-projected inputs
             ImmutableList.Builder<Symbol> partitionBySymbols = ImmutableList.builder();
-            for (Expression expression : window.getPartitionBy()) {
+            for (Expression expression : window.getPartitionBy().get()) {
                 partitionBySymbols.add(subPlan.translate(expression));
             }
 

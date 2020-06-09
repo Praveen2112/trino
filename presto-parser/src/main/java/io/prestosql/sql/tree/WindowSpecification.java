@@ -25,29 +25,36 @@ import static java.util.Objects.requireNonNull;
 public class WindowSpecification
         extends Node
 {
-    private final List<Expression> partitionBy;
+    private final Optional<Identifier> existingWindowName;
+    private final Optional<List<Expression>> partitionBy;
     private final Optional<OrderBy> orderBy;
     private final Optional<WindowFrame> frame;
 
-    public WindowSpecification(List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
+    public WindowSpecification(Optional<Identifier> existingWindowName, Optional<List<Expression>> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
     {
-        this(Optional.empty(), partitionBy, orderBy, frame);
+        this(Optional.empty(), existingWindowName, partitionBy, orderBy, frame);
     }
 
-    public WindowSpecification(NodeLocation location, List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
+    public WindowSpecification(NodeLocation location, Optional<Identifier> existingWindowName, Optional<List<Expression>> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
     {
-        this(Optional.of(location), partitionBy, orderBy, frame);
+        this(Optional.of(location), existingWindowName, partitionBy, orderBy, frame);
     }
 
-    private WindowSpecification(Optional<NodeLocation> location, List<Expression> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
+    private WindowSpecification(Optional<NodeLocation> location, Optional<Identifier> existingWindowName, Optional<List<Expression>> partitionBy, Optional<OrderBy> orderBy, Optional<WindowFrame> frame)
     {
         super(location);
+        this.existingWindowName = requireNonNull(existingWindowName, "existingWindowName is null");
         this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
         this.orderBy = requireNonNull(orderBy, "orderBy is null");
         this.frame = requireNonNull(frame, "frame is null");
     }
 
-    public List<Expression> getPartitionBy()
+    public Optional<Identifier> getExistingWindowName()
+    {
+        return existingWindowName;
+    }
+
+    public Optional<List<Expression>> getPartitionBy()
     {
         return partitionBy;
     }
@@ -72,10 +79,16 @@ public class WindowSpecification
     public List<Node> getChildren()
     {
         ImmutableList.Builder<Node> nodes = ImmutableList.builder();
-        nodes.addAll(partitionBy);
+        partitionBy.ifPresent(nodes::addAll);
         orderBy.ifPresent(nodes::add);
         frame.ifPresent(nodes::add);
         return nodes.build();
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(existingWindowName, partitionBy, orderBy, frame);
     }
 
     @Override
@@ -88,21 +101,17 @@ public class WindowSpecification
             return false;
         }
         WindowSpecification o = (WindowSpecification) obj;
-        return Objects.equals(partitionBy, o.partitionBy) &&
+        return Objects.equals(existingWindowName, o.existingWindowName) &&
+                Objects.equals(partitionBy, o.partitionBy) &&
                 Objects.equals(orderBy, o.orderBy) &&
                 Objects.equals(frame, o.frame);
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(partitionBy, orderBy, frame);
     }
 
     @Override
     public String toString()
     {
         return toStringHelper(this)
+                .add("existingWindowName", existingWindowName)
                 .add("partitionBy", partitionBy)
                 .add("orderBy", orderBy)
                 .add("frame", frame)
