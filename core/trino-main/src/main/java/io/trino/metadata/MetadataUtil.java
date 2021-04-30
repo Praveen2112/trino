@@ -142,7 +142,7 @@ public final class MetadataUtil
         return new CatalogSchemaName(catalogName, metadata.getNameCanonicalizer(session, catalogName).canonicalize(schemaIdentifier.getValue(), schemaIdentifier.isDelimited()));
     }
 
-    public static QualifiedObjectName createQualifiedObjectName(Session session, Node node, QualifiedName name)
+    public static QualifiedObjectName createQualifiedObjectName(Session session, Node node, QualifiedName name, Metadata metadata)
     {
         requireNonNull(session, "session is null");
         requireNonNull(name, "name is null");
@@ -150,12 +150,13 @@ public final class MetadataUtil
             throw new TrinoException(SYNTAX_ERROR, format("Too many dots in table name: %s", name));
         }
 
-        List<String> parts = Lists.reverse(name.getParts());
-        String objectName = parts.get(0);
-        String schemaName = (parts.size() > 1) ? parts.get(1) : session.getSchema().orElseThrow(() ->
-                semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set"));
-        String catalogName = (parts.size() > 2) ? parts.get(2) : session.getCatalog().orElseThrow(() ->
+        List<Identifier> parts = Lists.reverse(name.getOriginalParts());
+        String catalogName = (parts.size() > 2) ? LEGACY_NAME_CANONICALIZER.canonicalize(parts.get(2).getValue(), parts.get(2).isDelimited()) : session.getCatalog().orElseThrow(() ->
                 semanticException(MISSING_CATALOG_NAME, node, "Catalog must be specified when session catalog is not set"));
+        NameCanonicalizer nameCanonicalizer = metadata.getNameCanonicalizer(session, catalogName);
+        String objectName = nameCanonicalizer.canonicalize(parts.get(0).getValue(), parts.get(0).isDelimited());
+        String schemaName = (parts.size() > 1) ? nameCanonicalizer.canonicalize(parts.get(1).getValue(), parts.get(1).isDelimited()) : session.getSchema().orElseThrow(() ->
+                semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set"));
 
         return new QualifiedObjectName(catalogName, schemaName, objectName);
     }

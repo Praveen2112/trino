@@ -236,7 +236,7 @@ final class ShowQueriesRewrite
 
             Optional<QualifiedName> tableName = showGrants.getTableName();
             if (tableName.isPresent()) {
-                QualifiedObjectName qualifiedTableName = createQualifiedObjectName(session, showGrants, tableName.get());
+                QualifiedObjectName qualifiedTableName = createQualifiedObjectName(session, showGrants, tableName.get(), metadata);
 
                 if (metadata.getView(session, qualifiedTableName).isEmpty() &&
                         metadata.getTableHandle(session, qualifiedTableName).isEmpty()) {
@@ -382,7 +382,7 @@ final class ShowQueriesRewrite
         @Override
         protected Node visitShowColumns(ShowColumns showColumns, Void context)
         {
-            QualifiedObjectName tableName = createQualifiedObjectName(session, showColumns, showColumns.getTable());
+            QualifiedObjectName tableName = createQualifiedObjectName(session, showColumns, showColumns.getTable(), metadata);
             if (metadata.getCatalogHandle(session, tableName.getCatalogName()).isEmpty()) {
                 throw semanticException(CATALOG_NOT_FOUND, showColumns, "Catalog '%s' does not exist", tableName.getCatalogName());
             }
@@ -475,7 +475,7 @@ final class ShowQueriesRewrite
         protected Node visitShowCreate(ShowCreate node, Void context)
         {
             if (node.getType() == MATERIALIZED_VIEW) {
-                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName());
+                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName(), metadata);
                 Optional<ConnectorMaterializedViewDefinition> viewDefinition = metadata.getMaterializedView(session, objectName);
 
                 if (viewDefinition.isEmpty()) {
@@ -508,7 +508,7 @@ final class ShowQueriesRewrite
             }
 
             if (node.getType() == VIEW) {
-                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName());
+                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName(), metadata);
 
                 if (metadata.getMaterializedView(session, objectName).isPresent()) {
                     throw semanticException(NOT_SUPPORTED, node, "Relation '%s' is a materialized view, not a view", objectName);
@@ -537,7 +537,7 @@ final class ShowQueriesRewrite
             }
 
             if (node.getType() == TABLE) {
-                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName());
+                QualifiedObjectName objectName = createQualifiedObjectName(session, node, node.getName(), metadata);
 
                 if (metadata.getMaterializedView(session, objectName).isPresent()) {
                     throw semanticException(NOT_SUPPORTED, node, "Relation '%s' is a materialized view, not a table", objectName);
