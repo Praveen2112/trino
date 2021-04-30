@@ -890,4 +890,12 @@ public class ClassLoaderSafeConnectorMetadata
             delegate.finishUpdate(session, tableHandle, fragments);
         }
     }
+
+    @Override
+    public String canonicalize(ConnectorSession session, String identifier, boolean delimited)
+    {
+        try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
+            return delegate.canonicalize(session, identifier, delimited);
+        }
+    }
 }

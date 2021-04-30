@@ -153,6 +153,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.primitives.Primitives.wrap;
 import static io.trino.metadata.FunctionKind.AGGREGATE;
+import static io.trino.metadata.NameCanonicalizer.LEGACY_NAME_CANONICALIZER;
 import static io.trino.metadata.QualifiedObjectName.convertFromSchemaTableName;
 import static io.trino.metadata.Signature.mangleOperatorName;
 import static io.trino.metadata.SignatureBinder.applyBoundVariables;
@@ -2265,6 +2266,17 @@ public final class MetadataManager
     public AnalyzePropertyManager getAnalyzePropertyManager()
     {
         return analyzePropertyManager;
+    }
+
+    @Override
+    public NameCanonicalizer getNameCanonicalizer(Session session, String catalogName)
+    {
+        Optional<CatalogMetadata> metadata = getOptionalCatalogMetadata(session, catalogName);
+        if (metadata.isPresent()) {
+            return (identifier, delimited) ->
+                    metadata.get().getMetadata().canonicalize(session.toConnectorSession(metadata.get().getCatalogName()), identifier, delimited);
+        }
+        return LEGACY_NAME_CANONICALIZER;
     }
 
     //
