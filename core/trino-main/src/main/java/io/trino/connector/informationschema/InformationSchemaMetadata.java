@@ -67,7 +67,6 @@ import static io.trino.connector.informationschema.InformationSchemaTable.VIEWS;
 import static io.trino.metadata.MetadataUtil.findColumnMetadata;
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Collections.emptyList;
-import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
 
@@ -262,7 +261,6 @@ public class InformationSchemaMetadata
         Optional<Set<String>> roles = filterString(constraint, ROLE_NAME_COLUMN_HANDLE);
         if (roles.isPresent()) {
             Set<String> result = roles.get().stream()
-                    .filter(this::isLowerCase)
                     .filter(role -> predicate.isEmpty() || predicate.get().test(roleAsFixedValues(role)))
                     .collect(toImmutableSet());
 
@@ -299,7 +297,6 @@ public class InformationSchemaMetadata
         }
 
         Set<String> result = grantees.get().stream()
-                .filter(this::isLowerCase)
                 .filter(role -> predicate.isEmpty() || predicate.get().test(granteeAsFixedValues(role)))
                 .collect(toImmutableSet());
 
@@ -318,7 +315,6 @@ public class InformationSchemaMetadata
         Optional<Set<String>> schemas = filterString(constraint, SCHEMA_COLUMN_HANDLE);
         if (schemas.isPresent()) {
             return schemas.get().stream()
-                    .filter(this::isLowerCase)
                     .filter(schema -> predicate.isEmpty() || predicate.get().test(schemaAsFixedValues(schema)))
                     .map(schema -> new QualifiedTablePrefix(catalogName, schema))
                     .collect(toImmutableSet());
@@ -351,7 +347,6 @@ public class InformationSchemaMetadata
                             .map(schemaName -> Stream.of(prefix))
                             .orElseGet(() -> listSchemaNames(session)))
                     .flatMap(prefix -> tables.get().stream()
-                            .filter(this::isLowerCase)
                             .map(table -> new QualifiedObjectName(catalogName, prefix.getSchemaName().get(), table)))
                     .filter(objectName -> !isColumnsEnumeratingTable(informationSchemaTable) || metadata.getTableHandle(session, objectName).isPresent() || metadata.getView(session, objectName).isPresent())
                     .filter(objectName -> predicate.isEmpty() || predicate.get().test(asFixedValues(objectName)))
@@ -441,10 +436,5 @@ public class InformationSchemaMetadata
                 CATALOG_COLUMN_HANDLE, new NullableValue(createUnboundedVarcharType(), utf8Slice(objectName.getCatalogName())),
                 SCHEMA_COLUMN_HANDLE, new NullableValue(createUnboundedVarcharType(), utf8Slice(objectName.getSchemaName())),
                 TABLE_NAME_COLUMN_HANDLE, new NullableValue(createUnboundedVarcharType(), utf8Slice(objectName.getObjectName())));
-    }
-
-    private boolean isLowerCase(String value)
-    {
-        return value.toLowerCase(ENGLISH).equals(value);
     }
 }

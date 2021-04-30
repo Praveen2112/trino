@@ -77,6 +77,7 @@ import static io.trino.plugin.jdbc.JdbcMetadataSessionProperties.isJoinPushdownE
 import static io.trino.plugin.jdbc.JdbcMetadataSessionProperties.isTopNPushdownEnabled;
 import static io.trino.spi.StandardErrorCode.PERMISSION_DENIED;
 import static java.lang.Math.max;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class DefaultJdbcMetadata
@@ -110,7 +111,7 @@ public class DefaultJdbcMetadata
     @Override
     public JdbcTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName)
     {
-        return jdbcClient.getTableHandle(session, tableName)
+        return jdbcClient.getTableHandle(session, tableName.asLegacySchemaTableName())
                 .orElse(null);
     }
 
@@ -552,7 +553,7 @@ public class DefaultJdbcMetadata
     @Override
     public List<SchemaTableName> listTables(ConnectorSession session, Optional<String> schemaName)
     {
-        return jdbcClient.getTableNames(session, schemaName);
+        return jdbcClient.getTableNames(session, schemaName.map(name -> name.toLowerCase(ENGLISH)));
     }
 
     @Override

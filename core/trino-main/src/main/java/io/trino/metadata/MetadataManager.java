@@ -602,11 +602,10 @@ public final class MetadataManager
         Optional<QualifiedObjectName> objectName = prefix.asQualifiedObjectName();
         if (objectName.isPresent()) {
             if (isExistingRelation(session, objectName.get())) {
-                return ImmutableList.of(objectName.get());
+                return ImmutableList.of(objectName.get().asLegacyQualifiedObjectName());
             }
             return ImmutableList.of();
         }
-
         Optional<CatalogMetadata> catalog = getOptionalCatalogMetadata(session, prefix.getCatalogName());
         Set<QualifiedObjectName> tables = new LinkedHashSet<>();
         if (catalog.isPresent()) {

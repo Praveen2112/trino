@@ -66,23 +66,6 @@ public final class MetadataUtil
         return checkLowerCase(catalogName, "catalogName");
     }
 
-    public static String checkSchemaName(String schemaName)
-    {
-        return checkLowerCase(schemaName, "schemaName");
-    }
-
-    public static String checkTableName(String tableName)
-    {
-        return checkLowerCase(tableName, "tableName");
-    }
-
-    public static void checkObjectName(String catalogName, String schemaName, String objectName)
-    {
-        checkLowerCase(catalogName, "catalogName");
-        checkLowerCase(schemaName, "schemaName");
-        checkLowerCase(objectName, "objectName");
-    }
-
     public static String checkLowerCase(String value, String name)
     {
         if (value == null) {
@@ -151,14 +134,18 @@ public final class MetadataUtil
         }
 
         List<Identifier> parts = Lists.reverse(name.getOriginalParts());
-        String catalogName = (parts.size() > 2) ? LEGACY_NAME_CANONICALIZER.canonicalize(parts.get(2).getValue(), parts.get(2).isDelimited()) : session.getCatalog().orElseThrow(() ->
-                semanticException(MISSING_CATALOG_NAME, node, "Catalog must be specified when session catalog is not set"));
-        NameCanonicalizer nameCanonicalizer = metadata.getNameCanonicalizer(session, catalogName);
-        String objectName = nameCanonicalizer.canonicalize(parts.get(0).getValue(), parts.get(0).isDelimited());
-        String schemaName = (parts.size() > 1) ? nameCanonicalizer.canonicalize(parts.get(1).getValue(), parts.get(1).isDelimited()) : session.getSchema().orElseThrow(() ->
-                semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set"));
+        Identifier objectName = parts.get(0);
+        Identifier schemaName = (parts.size() > 1) ? parts.get(1) : new Identifier(session.getSchema().orElseThrow(() ->
+                semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set")), true);
+        Identifier catalogName = (parts.size() > 2) ? parts.get(2) : new Identifier(session.getCatalog().orElseThrow(() ->
+                semanticException(MISSING_CATALOG_NAME, node, "Catalog must be specified when session catalog is not set")), true);
+        String catalog = LEGACY_NAME_CANONICALIZER.canonicalize(catalogName.getValue(), catalogName.isDelimited());
+        NameCanonicalizer nameCanonicalizer = metadata.getNameCanonicalizer(session, catalog);
 
-        return new QualifiedObjectName(catalogName, schemaName, objectName);
+        return new QualifiedObjectName(
+                catalog,
+                nameCanonicalizer.canonicalize(schemaName.getValue(), schemaName.isDelimited()),
+                nameCanonicalizer.canonicalize(objectName.getValue(), objectName.isDelimited()));
     }
 
     public static TrinoPrincipal createPrincipal(Session session, GrantorSpecification specification)

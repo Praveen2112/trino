@@ -80,7 +80,7 @@ public class MongoMetadata
     {
         requireNonNull(tableName, "tableName is null");
         try {
-            return mongoSession.getTable(tableName).getTableHandle();
+            return mongoSession.getTable(tableName.asLegacySchemaTableName()).getTableHandle();
         }
         catch (TableNotFoundException e) {
             log.debug(e, "Table(%s) not found", tableName);
@@ -99,7 +99,9 @@ public class MongoMetadata
     @Override
     public List<SchemaTableName> listTables(ConnectorSession session, Optional<String> optionalSchemaName)
     {
-        List<String> schemaNames = optionalSchemaName.map(ImmutableList::of)
+        List<String> schemaNames = optionalSchemaName
+                .map(name -> name.toLowerCase(ENGLISH))
+                .map(ImmutableList::of)
                 .orElseGet(() -> (ImmutableList<String>) listSchemaNames(session));
         ImmutableList.Builder<SchemaTableName> tableNames = ImmutableList.builder();
         for (String schemaName : schemaNames) {

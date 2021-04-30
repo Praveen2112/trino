@@ -74,7 +74,7 @@ public class PhoenixMetadata
     @Override
     public JdbcTableHandle getTableHandle(ConnectorSession session, SchemaTableName schemaTableName)
     {
-        return phoenixClient.getTableHandle(session, schemaTableName)
+        return phoenixClient.getTableHandle(session, schemaTableName.asLegacySchemaTableName())
                 .map(tableHandle -> new JdbcTableHandle(
                         schemaTableName,
                         tableHandle.getCatalogName(),

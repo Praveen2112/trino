@@ -75,6 +75,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static io.trino.spi.type.BigintType.BIGINT;
@@ -290,11 +291,11 @@ public class MockConnector
         public List<SchemaTableName> listTables(ConnectorSession session, Optional<String> schemaName)
         {
             if (schemaName.isPresent()) {
-                return listTables.apply(session, schemaName.get());
+                return listTables.apply(session, schemaName.get()).stream().map(SchemaTableName::asLegacySchemaTableName).collect(toImmutableList());
             }
             ImmutableList.Builder<SchemaTableName> tableNames = ImmutableList.builder();
             for (String schema : listSchemaNames(session)) {
-                tableNames.addAll(listTables.apply(session, schema));
+                tableNames.addAll(listTables.apply(session, schema).stream().map(SchemaTableName::asLegacySchemaTableName).collect(toImmutableList()));
             }
             return tableNames.build();
         }

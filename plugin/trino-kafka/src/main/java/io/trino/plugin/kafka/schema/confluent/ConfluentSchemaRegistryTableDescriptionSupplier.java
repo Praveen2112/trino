@@ -239,7 +239,7 @@ public class ConfluentSchemaRegistryTableDescriptionSupplier
     // ex. kafka.default."mytable&key-subject=foo&value-subject=bar"
     private TopicAndSubjects parseTopicAndSubjects(SchemaTableName encodedSchemaTableName)
     {
-        String encodedTableName = encodedSchemaTableName.getTableName();
+        String encodedTableName = encodedSchemaTableName.asLegacySchemaTableName().getTableName();
         List<String> parts = Splitter.on(KEY_VALUE_PAIR_DELIMITER).trimResults().splitToList(encodedTableName);
         checkState(!parts.isEmpty() && parts.size() <= 3, "Unexpected format for encodedTableName. Expected format is <tableName>[&key-subject=<key subject>][&value-subject=<value subject>]");
         String tableName = parts.get(0);
@@ -267,6 +267,7 @@ public class ConfluentSchemaRegistryTableDescriptionSupplier
     {
         return topicAndSubjectsSupplier.get().keySet().stream()
                 .map(tableName -> new SchemaTableName(defaultSchema, tableName))
+                .map(SchemaTableName::asLegacySchemaTableName)
                 .collect(toImmutableSet());
     }
 

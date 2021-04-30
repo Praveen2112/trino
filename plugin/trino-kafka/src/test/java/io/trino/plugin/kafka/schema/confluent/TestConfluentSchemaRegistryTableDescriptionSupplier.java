@@ -78,7 +78,7 @@ public class TestConfluentSchemaRegistryTableDescriptionSupplier
     {
         TableDescriptionSupplier tableDescriptionSupplier = createTableDescriptionSupplier();
         String topicName = "camelCase_Topic";
-        SchemaTableName schemaTableName = new SchemaTableName(DEFAULT_NAME, topicName);
+        SchemaTableName schemaTableName = new SchemaTableName(DEFAULT_NAME, topicName).asLegacySchemaTableName();
         String subject = topicName + "-key";
 
         SCHEMA_REGISTRY_CLIENT.register(subject, getAvroSchema(schemaTableName.getTableName(), ""));
@@ -126,7 +126,7 @@ public class TestConfluentSchemaRegistryTableDescriptionSupplier
     {
         TableDescriptionSupplier tableDescriptionSupplier = createTableDescriptionSupplier();
         String topicName = "base_Topic";
-        SchemaTableName schemaTableName = new SchemaTableName(DEFAULT_NAME, topicName);
+        SchemaTableName schemaTableName = new SchemaTableName(DEFAULT_NAME, topicName).asLegacySchemaTableName();
         String subject = topicName + "-value";
         SCHEMA_REGISTRY_CLIENT.register(subject, getAvroSchema(schemaTableName.getTableName(), ""));
         String overriddenSubject = "overriddenSubject";

@@ -383,6 +383,7 @@ final class ShowQueriesRewrite
         protected Node visitShowColumns(ShowColumns showColumns, Void context)
         {
             QualifiedObjectName tableName = createQualifiedObjectName(session, showColumns, showColumns.getTable(), metadata);
+            System.out.println("Table " + COLUMNS.getSchemaTableName());
             if (metadata.getCatalogHandle(session, tableName.getCatalogName()).isEmpty()) {
                 throw semanticException(CATALOG_NOT_FOUND, showColumns, "Catalog '%s' does not exist", tableName.getCatalogName());
             }

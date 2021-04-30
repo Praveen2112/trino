@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static io.trino.metadata.MetadataUtil.checkObjectName;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 @Immutable
@@ -51,7 +51,9 @@ public class QualifiedObjectName
 
     public QualifiedObjectName(String catalogName, String schemaName, String objectName)
     {
-        checkObjectName(catalogName, schemaName, objectName);
+        requireNonNull(catalogName, "catalogName");
+        requireNonNull(schemaName, "schemaName");
+        requireNonNull(objectName, "objectName");
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.objectName = objectName;
@@ -95,6 +97,11 @@ public class QualifiedObjectName
     public QualifiedTablePrefix asQualifiedTablePrefix()
     {
         return new QualifiedTablePrefix(catalogName, schemaName, objectName);
+    }
+
+    public QualifiedObjectName asLegacyQualifiedObjectName()
+    {
+        return new QualifiedObjectName(catalogName, schemaName.toLowerCase(ENGLISH), objectName.toLowerCase(ENGLISH));
     }
 
     @Override
