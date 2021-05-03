@@ -81,7 +81,7 @@ public class KinesisTableDescriptionSupplier
                     KinesisStreamDescription table = streamDescriptionCodec.fromJson(Files.readAllBytes(file));
                     String schemaName = firstNonNull(table.getSchemaName(), kinesisConfig.getDefaultSchema());
                     log.debug("Kinesis table %s %s %s", schemaName, table.getTableName(), table);
-                    builder.put(new SchemaTableName(schemaName, table.getTableName()), table);
+                    builder.put(new SchemaTableName(schemaName, table.getTableName()).asLegacySchemaTableName(), table);
                 }
             }
 

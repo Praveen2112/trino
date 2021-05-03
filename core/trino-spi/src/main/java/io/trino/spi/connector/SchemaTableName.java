@@ -29,8 +29,8 @@ public final class SchemaTableName
     @JsonCreator
     public SchemaTableName(@JsonProperty("schema") String schemaName, @JsonProperty("table") String tableName)
     {
-        this.schemaName = checkNotEmpty(schemaName, "schemaName").toLowerCase(ENGLISH);
-        this.tableName = checkNotEmpty(tableName, "tableName").toLowerCase(ENGLISH);
+        this.schemaName = checkNotEmpty(schemaName, "schemaName");
+        this.tableName = checkNotEmpty(tableName, "tableName");
     }
 
     @JsonProperty("schema")
@@ -74,5 +74,10 @@ public final class SchemaTableName
     public SchemaTablePrefix toSchemaTablePrefix()
     {
         return new SchemaTablePrefix(schemaName, tableName);
+    }
+
+    public SchemaTableName asLegacySchemaTableName()
+    {
+        return new SchemaTableName(schemaName.toLowerCase(ENGLISH), tableName.toLowerCase(ENGLISH));
     }
 }

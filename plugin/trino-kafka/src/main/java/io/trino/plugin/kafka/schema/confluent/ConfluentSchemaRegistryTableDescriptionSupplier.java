@@ -267,6 +267,7 @@ public class ConfluentSchemaRegistryTableDescriptionSupplier
     {
         return topicAndSubjectsSupplier.get().keySet().stream()
                 .map(tableName -> new SchemaTableName(defaultSchema, tableName))
+                .map(SchemaTableName::asLegacySchemaTableName)
                 .collect(toImmutableSet());
     }
 

@@ -54,7 +54,8 @@ public final class DynamicTableBuilder
     {
         requireNonNull(pinotMetadata, "pinotMetadata is null");
         requireNonNull(schemaTableName, "schemaTableName is null");
-        String query = schemaTableName.getTableName();
+        SchemaTableName legacySchemaTableName = schemaTableName.asLegacySchemaTableName();
+        String query = legacySchemaTableName.getTableName();
         BrokerRequest request = REQUEST_COMPILER.compileToBrokerRequest(query);
         String pinotTableName = stripSuffix(request.getQuerySource().getTableName());
         Optional<String> suffix = getSuffix(request.getQuerySource().getTableName());
@@ -63,13 +64,13 @@ public final class DynamicTableBuilder
         List<String> selectionColumns = ImmutableList.of();
         List<OrderByExpression> orderBy = ImmutableList.of();
         if (request.getSelections() != null) {
-            selectionColumns = resolvePinotColumns(schemaTableName, request.getSelections().getSelectionColumns(), columnHandles);
+            selectionColumns = resolvePinotColumns(legacySchemaTableName, request.getSelections().getSelectionColumns(), columnHandles);
             if (request.getSelections().getSelectionSortSequence() != null) {
                 ImmutableList.Builder<OrderByExpression> orderByBuilder = ImmutableList.builder();
                 for (SelectionSort sortItem : request.getSelections().getSelectionSortSequence()) {
                     PinotColumnHandle columnHandle = (PinotColumnHandle) columnHandles.get(sortItem.getColumn());
                     if (columnHandle == null) {
-                        throw new ColumnNotFoundException(schemaTableName, sortItem.getColumn());
+                        throw new ColumnNotFoundException(legacySchemaTableName, sortItem.getColumn());
                     }
                     orderByBuilder.add(new OrderByExpression(columnHandle.getColumnName(), sortItem.isIsAsc()));
                 }
@@ -82,7 +83,7 @@ public final class DynamicTableBuilder
             groupByColumns = ImmutableList.of();
         }
         else {
-            groupByColumns = resolvePinotColumns(schemaTableName, request.getGroupBy().getExpressions(), columnHandles);
+            groupByColumns = resolvePinotColumns(legacySchemaTableName, request.getGroupBy().getExpressions(), columnHandles);
         }
 
         Optional<String> filter;

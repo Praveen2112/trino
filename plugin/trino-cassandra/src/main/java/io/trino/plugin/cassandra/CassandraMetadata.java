@@ -112,7 +112,7 @@ public class CassandraMetadata
 
     private static SchemaTableName getTableName(ConnectorTableHandle tableHandle)
     {
-        return ((CassandraTableHandle) tableHandle).getSchemaTableName();
+        return ((CassandraTableHandle) tableHandle).getSchemaTableName().asLegacySchemaTableName();
     }
 
     @Override
@@ -139,7 +139,7 @@ public class CassandraMetadata
         for (String schemaName : schemaNames) {
             try {
                 for (String tableName : cassandraSession.getCaseSensitiveTableNames(schemaName)) {
-                    tableNames.add(new SchemaTableName(schemaName, tableName.toLowerCase(ENGLISH)));
+                    tableNames.add(new SchemaTableName(schemaName, tableName).asLegacySchemaTableName());
                 }
             }
             catch (SchemaNotFoundException e) {
@@ -332,7 +332,7 @@ public class CassandraMetadata
             throw new TrinoException(NOT_SUPPORTED, "Inserting into materialized views not yet supported");
         }
 
-        SchemaTableName schemaTableName = new SchemaTableName(table.getSchemaName(), table.getTableName());
+        SchemaTableName schemaTableName = new SchemaTableName(table.getSchemaName(), table.getTableName()).asLegacySchemaTableName();
         List<CassandraColumnHandle> columns = cassandraSession.getTable(schemaTableName).getColumns();
         List<String> columnNames = columns.stream()
                 .filter(columnHandle -> !isHiddenIdColumn(columnHandle))

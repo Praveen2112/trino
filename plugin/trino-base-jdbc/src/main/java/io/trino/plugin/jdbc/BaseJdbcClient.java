@@ -222,7 +222,7 @@ public abstract class BaseJdbcClient
                     String tableSchema = getTableSchemaName(resultSet);
                     String tableName = resultSet.getString("TABLE_NAME");
                     if (filterSchema(tableSchema)) {
-                        list.add(new SchemaTableName(tableSchema, tableName));
+                        list.add(new SchemaTableName(tableSchema, tableName).asLegacySchemaTableName());
                     }
                 }
                 return list.build();
@@ -668,7 +668,7 @@ public abstract class BaseJdbcClient
                 handle.getCatalogName(),
                 handle.getSchemaName(),
                 handle.getTemporaryTableName(),
-                new SchemaTableName(handle.getSchemaName(), handle.getTableName()));
+                new SchemaTableName(handle.getSchemaName(), handle.getTableName()).asLegacySchemaTableName());
     }
 
     @Override
@@ -782,7 +782,7 @@ public abstract class BaseJdbcClient
     public void rollbackCreateTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         dropTable(session, new JdbcTableHandle(
-                new SchemaTableName(handle.getSchemaName(), handle.getTemporaryTableName()),
+                new SchemaTableName(handle.getSchemaName(), handle.getTemporaryTableName()).asLegacySchemaTableName(),
                 handle.getCatalogName(),
                 handle.getSchemaName(),
                 handle.getTemporaryTableName()));
