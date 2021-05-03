@@ -43,7 +43,7 @@ public class TestTpchTableScanRedirection
     @Test(timeOut = 20_000)
     public void testTableScanRedirection()
     {
-        assertQuerySucceeds("CREATE SCHEMA memory.test");
+        assertQuerySucceeds("CREATE SCHEMA memory.\"test\"");
         // select orderstatus, count(*) from tpch.tiny.orders group by 1
         // O           |  7333
         // P           |   363

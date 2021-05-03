@@ -5253,13 +5253,13 @@ public abstract class AbstractTestEngineOnlyQueries
         String catalog = getSession().getCatalog().get();
         String schema = getSession().getSchema().get();
 
-        MaterializedResult result = computeActual("SHOW TABLES FROM " + schema);
+        MaterializedResult result = computeActual(format("SHOW TABLES FROM \"%s\"", schema));
         assertThat(result.getOnlyColumnAsSet()).containsAll(expectedTables);
 
-        result = computeActual("SHOW TABLES FROM " + catalog + "." + schema);
+        result = computeActual(format("SHOW TABLES FROM %s.\"%s\"", catalog, schema));
         assertThat(result.getOnlyColumnAsSet()).containsAll(expectedTables);
 
-        assertQueryFails("SHOW TABLES FROM UNKNOWN", "line 1:1: Schema 'unknown' does not exist");
+        assertQueryFails("SHOW TABLES FROM \"unknown\"", "line 1:1: Schema 'unknown' does not exist");
         assertQueryFails("SHOW TABLES FROM UNKNOWNCATALOG.UNKNOWNSCHEMA", "line 1:1: Catalog 'unknowncatalog' does not exist");
     }
 
@@ -5953,9 +5953,9 @@ public abstract class AbstractTestEngineOnlyQueries
         assertQueryFails("SHOW TABLES LIKE 't$_%' ESCAPE ''", "Escape string must be a single character");
         assertQueryFails("SHOW TABLES LIKE 't$_%' ESCAPE '$$'", "Escape string must be a single character");
 
-        Set<Object> allTables = computeActual("SHOW TABLES FROM information_schema").getOnlyColumnAsSet();
-        assertEquals(allTables, computeActual("SHOW TABLES FROM information_schema LIKE '%_%'").getOnlyColumnAsSet());
-        Set<Object> result = computeActual("SHOW TABLES FROM information_schema LIKE '%$_%' ESCAPE '$'").getOnlyColumnAsSet();
+        Set<Object> allTables = computeActual("SHOW TABLES FROM \"information_schema\"").getOnlyColumnAsSet();
+        assertEquals(allTables, computeActual("SHOW TABLES FROM \"information_schema\" LIKE '%_%'").getOnlyColumnAsSet());
+        Set<Object> result = computeActual("SHOW TABLES FROM \"information_schema\" LIKE '%$_%' ESCAPE '$'").getOnlyColumnAsSet();
         assertNotEquals(allTables, result);
         assertThat(result).contains("table_privileges").allMatch(schemaName -> ((String) schemaName).contains("_"));
     }
