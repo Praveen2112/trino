@@ -435,6 +435,12 @@ public class CachingJdbcClient
         return delegate.getTableScanRedirection(session, tableHandle);
     }
 
+    @Override
+    public String canonicalize(ConnectorSession session, String value, boolean delimited)
+    {
+        return delegate.canonicalize(session, value, delimited);
+    }
+
     private JdbcIdentityCacheKey getIdentityKey(ConnectorSession session)
     {
         return identityMapping.getRemoteUserCacheKey(JdbcIdentity.from(session));
