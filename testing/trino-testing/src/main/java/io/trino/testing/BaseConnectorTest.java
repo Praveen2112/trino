@@ -23,10 +23,12 @@ import org.testng.annotations.Test;
 import java.util.stream.Stream;
 
 import static io.trino.SystemSessionProperties.IGNORE_STATS_CALCULATOR_FAILURES;
+import static io.trino.metadata.NameCanonicalizer.LEGACY_NAME_CANONICALIZER;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static io.trino.testing.DataProviders.toDataProvider;
 import static io.trino.testing.QueryAssertions.assertContains;
 import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_ARRAY;
+import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_CASE_SENSITIVE_IDENTIFIERS;
 import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_COMMENT_ON_COLUMN;
 import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_COMMENT_ON_TABLE;
 import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_CREATE_SCHEMA;
@@ -39,6 +41,7 @@ import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_RENAME_TABLE_AC
 import static io.trino.testing.TestingConnectorBehavior.SUPPORTS_TOPN_PUSHDOWN;
 import static io.trino.testing.assertions.Assert.assertEquals;
 import static io.trino.testing.sql.TestTable.randomTableSuffix;
+import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.util.Collections.nCopies;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -576,5 +579,37 @@ public abstract class BaseConnectorTest
 
         assertFalse(getQueryRunner().tableExists(getSession(), tableName));
         assertFalse(getQueryRunner().tableExists(getSession(), renamedTable));
+    }
+
+    @Test(dataProvider = "schemaNamesProvider")
+    public void testCreateSchema(String name, boolean delimited)
+    {
+        if (!hasBehavior(SUPPORTS_CASE_SENSITIVE_IDENTIFIERS)) {
+            throw new SkipException("Skipping since case-sensitive-identifiers is not supported at all");
+        }
+        String schemaName = name;
+        if (delimited) {
+            schemaName = "\"" + name + "\"";
+        }
+        String canonicalizedSchemaName = getCanonicalizedName(name, delimited);
+        assertQueryFails("DROP SCHEMA " + schemaName, format("line 1:1: Schema '\\w+\\.%s' does not exist", canonicalizedSchemaName));
+        assertUpdate("CREATE SCHEMA " + schemaName);
+        MaterializedResult result = computeActual("SHOW SCHEMAS");
+        assertThat(result.getOnlyColumnAsSet()).contains(canonicalizedSchemaName);
+        assertQueryFails("CREATE SCHEMA " + schemaName, format("line 1:1: Schema '\\w+\\.%s' already exists", canonicalizedSchemaName));
+        assertUpdate("DROP SCHEMA " + schemaName);
+        assertQueryFails("DROP SCHEMA " + schemaName, format("line 1:1: Schema '\\w+\\.%s' does not exist", canonicalizedSchemaName));
+        assertUpdate("DROP SCHEMA IF EXISTS " + schemaName);
+    }
+
+    protected String getCanonicalizedName(String identifier, boolean delimited)
+    {
+        return LEGACY_NAME_CANONICALIZER.canonicalize(identifier, delimited);
+    }
+
+    @DataProvider
+    public static Object[][] schemaNamesProvider()
+    {
+        return new Object[][] {{"schema1", false}, {"schema2", true}, {"SCHEMA3", true}, {"scHema4", true}};
     }
 }
