@@ -56,7 +56,6 @@ public final class MetadataUtil
     {
         checkCatalogName(catalogName);
         schemaName.ifPresent(name -> requireNonNull(name, "schemaName is null"));
-        tableName.ifPresent(name -> checkLowerCase(name, "tableName"));
 
         checkArgument(schemaName.isPresent() || tableName.isEmpty(), "tableName specified but schemaName is missing");
     }
@@ -144,7 +143,7 @@ public final class MetadataUtil
         return new CatalogSchemaName(catalogName, nameCanonicalizer.canonicalize(schemaIdentifer.getValue(), schemaIdentifer.isDelimited()));
     }
 
-    public static QualifiedObjectName createQualifiedObjectName(Session session, Node node, QualifiedName name)
+    public static QualifiedObjectName createQualifiedObjectName(Session session, Node node, QualifiedName name, Metadata metadata)
     {
         requireNonNull(session, "session is null");
         requireNonNull(name, "name is null");
@@ -152,14 +151,24 @@ public final class MetadataUtil
             throw new TrinoException(SYNTAX_ERROR, format("Too many dots in table name: %s", name));
         }
 
-        List<String> parts = Lists.reverse(name.getParts());
-        String objectName = parts.get(0);
-        String schemaName = (parts.size() > 1) ? parts.get(1) : session.getSchema().orElseThrow(() ->
-                semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set"));
-        String catalogName = (parts.size() > 2) ? parts.get(2) : session.getCatalog().orElseThrow(() ->
-                semanticException(MISSING_CATALOG_NAME, node, "Catalog must be specified when session catalog is not set"));
+        List<Identifier> parts = Lists.reverse(name.getOriginalParts());
+        Identifier objectIdentifier = parts.get(0);
+        Identifier schemaIdentifier = (parts.size() > 1) ? parts.get(1) : session.getSchema()
+                .map(schemaName -> new Identifier(schemaName, true))
+                .orElseThrow(() ->
+                        semanticException(MISSING_SCHEMA_NAME, node, "Schema must be specified when session schema is not set"));
+        Identifier catalogIdentifier = (parts.size() > 2) ? parts.get(2) : session.getCatalog()
+                .map(objectName -> new Identifier(objectName, true))
+                .orElseThrow(() ->
+                        semanticException(MISSING_CATALOG_NAME, node, "Catalog must be specified when session catalog is not set"));
 
-        return new QualifiedObjectName(catalogName, schemaName, objectName);
+        String catalogName = LEGACY_NAME_CANONICALIZER.canonicalize(catalogIdentifier.getValue(), catalogIdentifier.isDelimited());
+        NameCanonicalizer nameCanonicalizer = metadata.getNameCanonicalizer(session, catalogName);
+
+        return new QualifiedObjectName(
+                catalogName,
+                nameCanonicalizer.canonicalize(schemaIdentifier.getValue(), schemaIdentifier.isDelimited()),
+                nameCanonicalizer.canonicalize(objectIdentifier.getValue(), objectIdentifier.isDelimited()));
     }
 
     public static TrinoPrincipal createPrincipal(Session session, GrantorSpecification specification)

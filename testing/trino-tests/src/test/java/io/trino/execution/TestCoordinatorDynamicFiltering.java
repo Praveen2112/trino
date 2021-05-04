@@ -230,23 +230,23 @@ public class TestCoordinatorDynamicFiltering
     public void testJoinWithImplicitCoercion()
     {
         // setup fact table with integer suppkey
-        computeActual("CREATE TABLE memory.default.supplier_decimal AS SELECT name, CAST(suppkey as decimal(19, 0)) suppkey_decimal FROM tpch.tiny.supplier");
+        computeActual("CREATE TABLE memory.\"default\".supplier_decimal AS SELECT name, CAST(suppkey as decimal(19, 0)) suppkey_decimal FROM tpch.tiny.supplier");
 
         assertQueryDynamicFilters(
-                "SELECT * FROM lineitem JOIN memory.default.supplier_decimal s ON lineitem.suppkey = s.suppkey_decimal AND s.name >= 'Supplier#000000080'",
+                "SELECT * FROM lineitem JOIN memory.\"default\".supplier_decimal s ON lineitem.suppkey = s.suppkey_decimal AND s.name >= 'Supplier#000000080'",
                 TupleDomain.withColumnDomains(ImmutableMap.of(
                         SUPP_KEY_HANDLE,
                         multipleValues(BIGINT, LongStream.rangeClosed(80L, 100L).boxed().collect(toImmutableList())))));
 
-        computeActual("CREATE TABLE memory.default.supplier_varchar AS SELECT name, CAST(address as varchar(42)) address FROM tpch.tiny.supplier");
+        computeActual("CREATE TABLE memory.\"default\".supplier_varchar AS SELECT name, CAST(address as varchar(42)) address FROM tpch.tiny.supplier");
 
-        List<String> values = computeActual("SELECT address FROM memory.default.supplier_varchar WHERE name >= 'Supplier#000000080'")
+        List<String> values = computeActual("SELECT address FROM memory.\"default\".supplier_varchar WHERE name >= 'Supplier#000000080'")
                 .getOnlyColumn()
                 .map(Object::toString)
                 .collect(toImmutableList());
 
         assertQueryDynamicFilters(
-                "SELECT * FROM customer JOIN memory.default.supplier_varchar s ON customer.address = s.address AND s.name >= 'Supplier#000000080'",
+                "SELECT * FROM customer JOIN memory.\"default\".supplier_varchar s ON customer.address = s.address AND s.name >= 'Supplier#000000080'",
                 TupleDomain.withColumnDomains(ImmutableMap.of(
                         ADDRESS_KEY_HANDLE,
                         multipleValues(createVarcharType(40), values))));

@@ -55,7 +55,7 @@ public class RenameTableTask
             WarningCollector warningCollector)
     {
         Session session = stateMachine.getSession();
-        QualifiedObjectName tableName = createQualifiedObjectName(session, statement, statement.getSource());
+        QualifiedObjectName tableName = createQualifiedObjectName(session, statement, statement.getSource(), metadata);
         Optional<TableHandle> tableHandle = metadata.getTableHandle(session, tableName);
         if (tableHandle.isEmpty()) {
             if (!statement.isExists()) {
@@ -64,7 +64,7 @@ public class RenameTableTask
             return immediateFuture(null);
         }
 
-        QualifiedObjectName target = createQualifiedObjectName(session, statement, statement.getTarget());
+        QualifiedObjectName target = createQualifiedObjectName(session, statement, statement.getTarget(), metadata);
         if (metadata.getCatalogHandle(session, target.getCatalogName()).isEmpty()) {
             throw semanticException(CATALOG_NOT_FOUND, statement, "Target catalog '%s' does not exist", target.getCatalogName());
         }

@@ -258,7 +258,7 @@ public class TestServer
     @Test
     public void testVersionOnCompilerFailedError()
     {
-        String tableName = "memory.default.test_version_on_compiler_failed";
+        String tableName = "memory.\"default\".\"test_version_on_compiler_failed\"";
         try (TestingTrinoClient testingClient = new TestingTrinoClient(server, testSessionBuilder().build())) {
             testingClient.execute("DROP TABLE IF EXISTS " + tableName);
             testingClient.execute("CREATE TABLE " + tableName + " AS SELECT '' as foo");
