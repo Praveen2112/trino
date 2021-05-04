@@ -13,7 +13,6 @@
  */
 package io.trino.plugin.jdbc;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.VerifyException;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -223,7 +222,7 @@ public abstract class BaseJdbcClient
                 ImmutableList.Builder<SchemaTableName> list = ImmutableList.builder();
                 while (resultSet.next()) {
                     String tableSchema = canonicalize(session, getTableSchemaName(resultSet), true);
-                    String tableName = resultSet.getString("TABLE_NAME").toLowerCase(ENGLISH);
+                    String tableName = canonicalize(session, resultSet.getString("TABLE_NAME"), true);
                     if (filterSchema(tableSchema)) {
                         list.add(new SchemaTableName(tableSchema, tableName));
                     }
@@ -671,7 +670,7 @@ public abstract class BaseJdbcClient
                 handle.getCatalogName(),
                 handle.getSchemaName(),
                 handle.getTemporaryTableName(),
-                new SchemaTableName(handle.getSchemaName(), handle.getTableName()).asLegacySchemaTableName());
+                new SchemaTableName(handle.getSchemaName(), handle.getTableName()));
     }
 
     @Override
@@ -778,6 +777,7 @@ public abstract class BaseJdbcClient
     public void dropTable(ConnectorSession session, JdbcTableHandle handle)
     {
         String sql = "DROP TABLE " + quoted(handle.asPlainTable().getRemoteTableName());
+        System.out.println("Drop table " + sql);
         execute(session, sql);
     }
 
@@ -785,7 +785,7 @@ public abstract class BaseJdbcClient
     public void rollbackCreateTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         dropTable(session, new JdbcTableHandle(
-                new SchemaTableName(handle.getSchemaName(), handle.getTemporaryTableName()).asLegacySchemaTableName(),
+                new SchemaTableName(handle.getSchemaName(), handle.getTemporaryTableName()),
                 handle.getCatalogName(),
                 handle.getSchemaName(),
                 handle.getTemporaryTableName()));
@@ -890,7 +890,6 @@ public abstract class BaseJdbcClient
     {
         requireNonNull(remoteSchema, "remoteSchema is null");
         requireNonNull(tableName, "tableName is null");
-        verify(CharMatcher.forPredicate(Character::isUpperCase).matchesNoneOf(tableName), "Expected table name from internal metadata to be lowercase: %s", tableName);
 
         if (caseInsensitiveNameMatching) {
             try {

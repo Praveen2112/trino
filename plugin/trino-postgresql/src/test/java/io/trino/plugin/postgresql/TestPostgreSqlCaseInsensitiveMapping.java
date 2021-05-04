@@ -24,12 +24,10 @@ import org.testng.annotations.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static io.trino.testing.assertions.Assert.assertEquals;
 import static java.lang.String.format;
-import static java.util.Locale.ENGLISH;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // With case-insensitive-name-matching enabled colliding schema/table names are considered as errors.
@@ -63,8 +61,8 @@ public class TestPostgreSqlCaseInsensitiveMapping
             assertThat(computeActual("SHOW SCHEMAS").getOnlyColumn()).contains("NonLowerCaseSchema");
             assertQuery("SHOW SCHEMAS LIKE 'NonLowerC%'", "VALUES 'NonLowerCaseSchema'");
             assertQuery("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '%NonLowerCaseSchema'", "VALUES 'NonLowerCaseSchema'");
-            assertQuery("SHOW TABLES FROM \"NonLowerCaseSchema\"", "VALUES 'lower_case_name', 'mixed_case_name', 'upper_case_name'");
-            assertQuery("SELECT table_name FROM information_schema.tables WHERE table_schema = 'NonLowerCaseSchema'", "VALUES 'lower_case_name', 'mixed_case_name', 'upper_case_name'");
+            assertQuery("SHOW TABLES FROM \"NonLowerCaseSchema\"", "VALUES 'lower_case_name', 'Mixed_Case_Name', 'UPPER_CASE_NAME'");
+            assertQuery("SELECT table_name FROM information_schema.tables WHERE table_schema = 'NonLowerCaseSchema'", "VALUES 'lower_case_name', 'Mixed_Case_Name', 'UPPER_CASE_NAME'");
             assertQueryReturnsEmptyResult("SELECT * FROM \"NonLowerCaseSchema\".lower_case_name");
         }
     }
@@ -109,29 +107,6 @@ public class TestPostgreSqlCaseInsensitiveMapping
                             "('lower', NULL, NULL)," +
                             "(NULL, 'mixed', NULL)," +
                             "(NULL, NULL, 'upper')");
-        }
-    }
-
-    @Test
-    public void testTableNameClash()
-            throws Exception
-    {
-        String[] nameVariants = {"casesensitivename", "\"CaseSensitiveName\"", "\"CASESENSITIVENAME\""};
-        assertThat(Stream.of(nameVariants)
-                .map(name -> name.replace("\"", "").toLowerCase(ENGLISH))
-                .collect(toImmutableSet()))
-                .hasSize(1);
-
-        for (int i = 0; i < nameVariants.length; i++) {
-            for (int j = i + 1; j < nameVariants.length; j++) {
-                try (AutoCloseable ignore1 = withTable(nameVariants[i], "(c varchar(5))");
-                        AutoCloseable ignore2 = withTable(nameVariants[j], "(d varchar(5))")) {
-                    assertThat(computeActual("SHOW TABLES").getOnlyColumn()).contains("casesensitivename");
-                    assertThat(computeActual("SHOW TABLES").getOnlyColumn().filter("casesensitivename"::equals)).hasSize(1); // TODO, should be 2
-                    assertQueryFails("SHOW COLUMNS FROM casesensitivename", "Failed to find remote table name:.*Multiple entries with same key.*");
-                    assertQueryFails("SELECT * FROM casesensitivename", "Failed to find remote table name:.*Multiple entries with same key.*");
-                }
-            }
         }
     }
 

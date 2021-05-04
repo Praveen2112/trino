@@ -602,6 +602,27 @@ public abstract class BaseConnectorTest
         assertUpdate("DROP SCHEMA IF EXISTS " + schemaName);
     }
 
+    @Test(dataProvider = "schemaNamesProvider")
+    public void testCreateTable(String name, boolean delimited)
+    {
+        if (!hasBehavior(SUPPORTS_CASE_SENSITIVE_IDENTIFIERS)) {
+            throw new SkipException("Skipping since case-sensitive-identifiers is not supported at all");
+        }
+        String objectName = name;
+        if (delimited) {
+            objectName = "\"" + name + "\"";
+        }
+        String canonicalizedName = getCanonicalizedName(name, delimited);
+        assertUpdate("CREATE SCHEMA " + objectName);
+        String createTableQuery = format("CREATE TABLE %1$s.%1$s (x INTEGER)", objectName);
+        assertUpdate(createTableQuery);
+        MaterializedResult result = computeActual("SHOW TABLES FROM " + objectName);
+        assertThat(result.getOnlyColumnAsSet()).contains(canonicalizedName);
+        assertQueryFails(createTableQuery, format("line 1:1: Table '\\w+\\.%1$s.%1$s' already exists", canonicalizedName));
+        assertUpdate(format("DROP TABLE %1$s.%1$s", objectName));
+        assertUpdate("DROP SCHEMA " + objectName);
+    }
+
     protected String getCanonicalizedName(String identifier, boolean delimited)
     {
         return LEGACY_NAME_CANONICALIZER.canonicalize(identifier, delimited);

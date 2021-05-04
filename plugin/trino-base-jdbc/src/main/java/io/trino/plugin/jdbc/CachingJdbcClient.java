@@ -276,7 +276,9 @@ public class CachingJdbcClient
     public void commitCreateTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         delegate.commitCreateTable(session, handle);
-        invalidateTableCaches(new SchemaTableName(handle.getSchemaName(), handle.getTableName()).asLegacySchemaTableName());
+        invalidateTableCaches(new SchemaTableName(
+                delegate.canonicalize(session, handle.getSchemaName(), true),
+                delegate.canonicalize(session, handle.getTableName(), true)));
     }
 
     @Override
@@ -289,7 +291,9 @@ public class CachingJdbcClient
     public void finishInsertTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         delegate.finishInsertTable(session, handle);
-        invalidateTableCaches(new SchemaTableName(handle.getSchemaName(), handle.getTableName()).asLegacySchemaTableName());
+        invalidateTableCaches(new SchemaTableName(
+                        delegate.canonicalize(session, handle.getSchemaName(), true),
+                        delegate.canonicalize(session, handle.getTableName(), true)));
     }
 
     @Override
