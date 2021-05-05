@@ -79,7 +79,7 @@ public class BenchmarkGeometryAggregations
                     .collect(Collectors.joining(","));
 
             queryRunner.execute(
-                    format("CREATE TABLE memory.default.us_states AS SELECT ST_GeometryFromText(t.wkt) AS geom FROM (VALUES %s) as t (name, wkt)",
+                    format("CREATE TABLE us_states AS SELECT ST_GeometryFromText(t.wkt) AS geom FROM (VALUES %s) as t (name, wkt)",
                             polygonValues));
         }
 

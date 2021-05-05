@@ -59,6 +59,8 @@ public enum TestingConnectorBehavior
 
     SUPPORTS_CANCELLATION(false),
 
+    SUPPORTS_CASE_SENSITIVE_IDENTIFIERS(false),
+
     /**/;
 
     private final Predicate<Predicate<TestingConnectorBehavior>> hasBehaviorByDefault;

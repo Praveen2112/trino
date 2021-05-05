@@ -640,4 +640,9 @@ public interface Metadata
      * This method is called after security checks against the original table.
      */
     Optional<TableScanRedirectApplicationResult> applyTableScanRedirect(Session session, TableHandle tableHandle);
+
+    /**
+     * Canonicalizes the provided SQL identifier according to connector-specific rules
+     */
+    NameCanonicalizer getNameCanonicalizer(Session session, String catalogName);
 }

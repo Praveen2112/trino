@@ -52,7 +52,7 @@ public class DropMaterializedViewTask
             WarningCollector warningCollector)
     {
         Session session = stateMachine.getSession();
-        QualifiedObjectName name = createQualifiedObjectName(session, statement, statement.getName());
+        QualifiedObjectName name = createQualifiedObjectName(session, statement, statement.getName(), metadata);
 
         Optional<ConnectorMaterializedViewDefinition> view = metadata.getMaterializedView(session, name);
         if (view.isEmpty()) {

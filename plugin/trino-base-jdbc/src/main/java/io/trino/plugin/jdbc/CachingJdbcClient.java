@@ -276,7 +276,9 @@ public class CachingJdbcClient
     public void commitCreateTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         delegate.commitCreateTable(session, handle);
-        invalidateTableCaches(new SchemaTableName(handle.getSchemaName(), handle.getTableName()));
+        invalidateTableCaches(new SchemaTableName(
+                delegate.canonicalize(session, handle.getSchemaName(), true),
+                delegate.canonicalize(session, handle.getTableName(), true)));
     }
 
     @Override
@@ -289,7 +291,9 @@ public class CachingJdbcClient
     public void finishInsertTable(ConnectorSession session, JdbcOutputTableHandle handle)
     {
         delegate.finishInsertTable(session, handle);
-        invalidateTableCaches(new SchemaTableName(handle.getSchemaName(), handle.getTableName()));
+        invalidateTableCaches(new SchemaTableName(
+                        delegate.canonicalize(session, handle.getSchemaName(), true),
+                        delegate.canonicalize(session, handle.getTableName(), true)));
     }
 
     @Override
@@ -433,6 +437,12 @@ public class CachingJdbcClient
     public Optional<TableScanRedirectApplicationResult> getTableScanRedirection(ConnectorSession session, JdbcTableHandle tableHandle)
     {
         return delegate.getTableScanRedirection(session, tableHandle);
+    }
+
+    @Override
+    public String canonicalize(ConnectorSession session, String value, boolean delimited)
+    {
+        return delegate.canonicalize(session, value, delimited);
     }
 
     private JdbcIdentityCacheKey getIdentityKey(ConnectorSession session)

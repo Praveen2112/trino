@@ -72,7 +72,7 @@ public class RevokeTask
 
     private void executeRevokeOnSchema(Session session, Revoke statement, Metadata metadata, AccessControl accessControl)
     {
-        CatalogSchemaName schemaName = createCatalogSchemaName(session, statement, Optional.of(statement.getName()));
+        CatalogSchemaName schemaName = createCatalogSchemaName(session, statement, Optional.of(statement.getName()), metadata);
 
         if (!metadata.schemaExists(session, schemaName)) {
             throw semanticException(SCHEMA_NOT_FOUND, statement, "Schema '%s' does not exist", schemaName);
@@ -88,7 +88,7 @@ public class RevokeTask
 
     private void executeRevokeOnTable(Session session, Revoke statement, Metadata metadata, AccessControl accessControl)
     {
-        QualifiedObjectName tableName = createQualifiedObjectName(session, statement, statement.getName());
+        QualifiedObjectName tableName = createQualifiedObjectName(session, statement, statement.getName(), metadata);
         Optional<TableHandle> tableHandle = metadata.getTableHandle(session, tableName);
         if (tableHandle.isEmpty()) {
             throw semanticException(TABLE_NOT_FOUND, statement, "Table '%s' does not exist", tableName);

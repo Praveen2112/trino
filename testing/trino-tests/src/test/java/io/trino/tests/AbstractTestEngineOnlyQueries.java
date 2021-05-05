@@ -80,6 +80,7 @@ import static io.trino.tests.QueryTemplate.queryTemplate;
 import static io.trino.type.UnknownType.UNKNOWN;
 import static java.lang.String.format;
 import static java.util.Collections.nCopies;
+import static java.util.Locale.ENGLISH;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
@@ -1362,10 +1363,10 @@ public abstract class AbstractTestEngineOnlyQueries
 
         MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
         MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
-                .row("nationkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
-                .row("regionkey", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, false)
-                .row("comment", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(152)", 0, false)
+                .row("nationkey", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "bigint", 8, false)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "varchar(25)", 0, false)
+                .row("regionkey", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "bigint", 8, false)
+                .row("comment", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "varchar(152)", 0, false)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
@@ -1409,8 +1410,8 @@ public abstract class AbstractTestEngineOnlyQueries
         MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
         MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
                 .row("_col0", "", "", "", "integer", 4, false)
-                .row("name", session.getCatalog().get(), session.getSchema().get(), "nation", "varchar(25)", 0, false)
-                .row("my_alias", session.getCatalog().get(), session.getSchema().get(), "nation", "bigint", 8, true)
+                .row("name", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "varchar(25)", 0, false)
+                .row("my_alias", session.getCatalog().get(), session.getSchema().get(), defaultCanonicalize("nation"), "bigint", 8, true)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
@@ -5248,18 +5249,19 @@ public abstract class AbstractTestEngineOnlyQueries
     {
         Set<String> expectedTables = TpchTable.getTables().stream()
                 .map(TpchTable::getTableName)
+                .map(this::defaultCanonicalize)
                 .collect(toImmutableSet());
 
         String catalog = getSession().getCatalog().get();
         String schema = getSession().getSchema().get();
 
-        MaterializedResult result = computeActual("SHOW TABLES FROM " + schema);
+        MaterializedResult result = computeActual(format("SHOW TABLES FROM \"%s\"", schema));
         assertThat(result.getOnlyColumnAsSet()).containsAll(expectedTables);
 
-        result = computeActual("SHOW TABLES FROM " + catalog + "." + schema);
+        result = computeActual(format("SHOW TABLES FROM %s.\"%s\"", catalog, schema));
         assertThat(result.getOnlyColumnAsSet()).containsAll(expectedTables);
 
-        assertQueryFails("SHOW TABLES FROM UNKNOWN", "line 1:1: Schema 'unknown' does not exist");
+        assertQueryFails("SHOW TABLES FROM \"unknown\"", "line 1:1: Schema 'unknown' does not exist");
         assertQueryFails("SHOW TABLES FROM UNKNOWNCATALOG.UNKNOWNSCHEMA", "line 1:1: Catalog 'unknowncatalog' does not exist");
     }
 
@@ -5953,9 +5955,9 @@ public abstract class AbstractTestEngineOnlyQueries
         assertQueryFails("SHOW TABLES LIKE 't$_%' ESCAPE ''", "Escape string must be a single character");
         assertQueryFails("SHOW TABLES LIKE 't$_%' ESCAPE '$$'", "Escape string must be a single character");
 
-        Set<Object> allTables = computeActual("SHOW TABLES FROM information_schema").getOnlyColumnAsSet();
-        assertEquals(allTables, computeActual("SHOW TABLES FROM information_schema LIKE '%_%'").getOnlyColumnAsSet());
-        Set<Object> result = computeActual("SHOW TABLES FROM information_schema LIKE '%$_%' ESCAPE '$'").getOnlyColumnAsSet();
+        Set<Object> allTables = computeActual("SHOW TABLES FROM \"information_schema\"").getOnlyColumnAsSet();
+        assertEquals(allTables, computeActual("SHOW TABLES FROM \"information_schema\" LIKE '%_%'").getOnlyColumnAsSet());
+        Set<Object> result = computeActual("SHOW TABLES FROM \"information_schema\" LIKE '%$_%' ESCAPE '$'").getOnlyColumnAsSet();
         assertNotEquals(allTables, result);
         assertThat(result).contains("table_privileges").allMatch(schemaName -> ((String) schemaName).contains("_"));
     }
@@ -6064,6 +6066,11 @@ public abstract class AbstractTestEngineOnlyQueries
                 .setSystemProperty(JOIN_DISTRIBUTION_TYPE, BROADCAST.toString())
                 .build();
         assertQuery(session, "SELECT * FROM (SELECT * FROM nation WHERE nationkey < -1) a RIGHT JOIN nation b ON a.nationkey = b.nationkey");
+    }
+
+    protected String defaultCanonicalize(String value)
+    {
+        return value.toLowerCase(ENGLISH);
     }
 
     private static ZonedDateTime zonedDateTime(String value)

@@ -132,7 +132,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -153,6 +152,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.primitives.Primitives.wrap;
 import static io.trino.metadata.FunctionKind.AGGREGATE;
+import static io.trino.metadata.NameCanonicalizer.LEGACY_NAME_CANONICALIZER;
 import static io.trino.metadata.QualifiedObjectName.convertFromSchemaTableName;
 import static io.trino.metadata.Signature.mangleOperatorName;
 import static io.trino.metadata.SignatureBinder.applyBoundVariables;
@@ -352,9 +352,7 @@ public final class MetadataManager
             ConnectorSession connectorSession = session.toConnectorSession(catalogMetadata.getCatalogName());
             for (CatalogName connectorId : catalogMetadata.listConnectorIds()) {
                 ConnectorMetadata metadata = catalogMetadata.getMetadataFor(connectorId);
-                metadata.listSchemaNames(connectorSession).stream()
-                        .map(schema -> schema.toLowerCase(Locale.ENGLISH))
-                        .forEach(schemaNames::add);
+                schemaNames.addAll(metadata.listSchemaNames(connectorSession));
             }
         }
         return ImmutableList.copyOf(schemaNames.build());
@@ -2265,6 +2263,17 @@ public final class MetadataManager
     public AnalyzePropertyManager getAnalyzePropertyManager()
     {
         return analyzePropertyManager;
+    }
+
+    @Override
+    public NameCanonicalizer getNameCanonicalizer(Session session, String catalogName)
+    {
+        Optional<CatalogMetadata> metadata = getOptionalCatalogMetadata(session, catalogName);
+        if (metadata.isPresent()) {
+            return (identifier, delimited) ->
+                    metadata.get().getMetadata().canonicalize(session.toConnectorSession(metadata.get().getCatalogName()), identifier, delimited);
+        }
+        return LEGACY_NAME_CANONICALIZER;
     }
 
     //

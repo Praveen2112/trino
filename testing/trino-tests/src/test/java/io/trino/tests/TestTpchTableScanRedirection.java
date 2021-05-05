@@ -43,12 +43,12 @@ public class TestTpchTableScanRedirection
     @Test(timeOut = 20_000)
     public void testTableScanRedirection()
     {
-        assertQuerySucceeds("CREATE SCHEMA memory.test");
+        assertQuerySucceeds("CREATE SCHEMA memory.\"test\"");
         // select orderstatus, count(*) from tpch.tiny.orders group by 1
         // O           |  7333
         // P           |   363
         // F           |  7304
-        assertUpdate("CREATE TABLE memory.test.orders AS SELECT * FROM tpch_data_load.tiny.orders WHERE orderstatus IN ('O', 'P')", 7696L);
+        assertUpdate("CREATE TABLE memory.\"test\".\"orders\" AS SELECT * FROM tpch_data_load.tiny.orders WHERE orderstatus IN ('O', 'P')", 7696L);
         // row count of 7333L verifies that filter was coorectly re-materialized during redirection and that redirection has taken place
         assertEquals(computeActual("SELECT * FROM tpch.tiny.orders WHERE orderstatus IN ('O', 'F')").getRowCount(), 7333L);
     }

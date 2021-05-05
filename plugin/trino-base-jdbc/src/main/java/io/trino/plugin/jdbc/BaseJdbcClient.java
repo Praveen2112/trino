@@ -13,7 +13,6 @@
  */
 package io.trino.plugin.jdbc;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.VerifyException;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -139,7 +138,10 @@ public abstract class BaseJdbcClient
     protected final Cache<JdbcIdentity, Map<String, String>> remoteSchemaNames;
     protected final Cache<RemoteTableNameCacheKey, Map<String, String>> remoteTableNames;
 
-    public BaseJdbcClient(BaseJdbcConfig config, String identifierQuote, ConnectionFactory connectionFactory)
+    public BaseJdbcClient(
+            BaseJdbcConfig config,
+            String identifierQuote,
+            ConnectionFactory connectionFactory)
     {
         this(
                 identifierQuote,
@@ -175,7 +177,7 @@ public abstract class BaseJdbcClient
     {
         try (Connection connection = connectionFactory.openConnection(session)) {
             return listSchemas(connection).stream()
-                    .map(schemaName -> schemaName.toLowerCase(ENGLISH))
+                    .map(schemaName -> canonicalize(session, schemaName, true))
                     .collect(toImmutableSet());
         }
         catch (SQLException e) {
@@ -219,8 +221,8 @@ public abstract class BaseJdbcClient
             try (ResultSet resultSet = getTables(connection, remoteSchema, Optional.empty())) {
                 ImmutableList.Builder<SchemaTableName> list = ImmutableList.builder();
                 while (resultSet.next()) {
-                    String tableSchema = getTableSchemaName(resultSet);
-                    String tableName = resultSet.getString("TABLE_NAME");
+                    String tableSchema = canonicalize(session, getTableSchemaName(resultSet), true);
+                    String tableName = canonicalize(session, resultSet.getString("TABLE_NAME"), true);
                     if (filterSchema(tableSchema)) {
                         list.add(new SchemaTableName(tableSchema, tableName));
                     }
@@ -775,6 +777,7 @@ public abstract class BaseJdbcClient
     public void dropTable(ConnectorSession session, JdbcTableHandle handle)
     {
         String sql = "DROP TABLE " + quoted(handle.asPlainTable().getRemoteTableName());
+        System.out.println("Drop table " + sql);
         execute(session, sql);
     }
 
@@ -842,7 +845,6 @@ public abstract class BaseJdbcClient
     protected String toRemoteSchemaName(JdbcIdentity identity, Connection connection, String schemaName)
     {
         requireNonNull(schemaName, "schemaName is null");
-        verify(CharMatcher.forPredicate(Character::isUpperCase).matchesNoneOf(schemaName), "Expected schema name from internal metadata to be lowercase: %s", schemaName);
 
         if (caseInsensitiveNameMatching) {
             try {
@@ -888,7 +890,6 @@ public abstract class BaseJdbcClient
     {
         requireNonNull(remoteSchema, "remoteSchema is null");
         requireNonNull(tableName, "tableName is null");
-        verify(CharMatcher.forPredicate(Character::isUpperCase).matchesNoneOf(tableName), "Expected table name from internal metadata to be lowercase: %s", tableName);
 
         if (caseInsensitiveNameMatching) {
             try {
@@ -1112,6 +1113,12 @@ public abstract class BaseJdbcClient
     public Map<String, Object> getTableProperties(ConnectorSession session, JdbcTableHandle tableHandle)
     {
         return emptyMap();
+    }
+
+    @Override
+    public String canonicalize(ConnectorSession session, String value, boolean delimited)
+    {
+        return value.toLowerCase(ENGLISH);
     }
 
     protected String quoted(@Nullable String catalog, @Nullable String schema, String table)

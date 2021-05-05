@@ -31,6 +31,7 @@ import static io.trino.SystemSessionProperties.ENABLE_DYNAMIC_FILTERING;
 import static io.trino.sql.analyzer.FeaturesConfig.JoinDistributionType.BROADCAST;
 import static io.trino.testing.TestingSession.createBogusTestingCatalog;
 import static io.trino.testing.sql.TestTable.randomTableSuffix;
+import static java.util.Locale.ENGLISH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -244,7 +245,7 @@ public class TestDistributedEngineOnlyQueries
     {
         // Ensure CTA works when the table exposes hidden fields
         // First, verify that the table 'nation' contains the expected hidden column 'row_number'
-        assertThat(query("SELECT count(*) FROM information_schema.columns " +
+        assertThat(query("SELECT count(*) FROM \"information_schema\".\"columns\" " +
                 "WHERE table_catalog = 'tpch' and table_schema = 'tiny' and table_name = 'nation' and column_name = 'row_number'"))
                 .matches("VALUES BIGINT '0'");
         assertThat(query("SELECT min(row_number) FROM tpch.tiny.nation"))
@@ -258,5 +259,11 @@ public class TestDistributedEngineOnlyQueries
         assertThatThrownBy(() -> query("SELECT min(row_number) FROM n"))
                 .hasMessage("line 1:12: Column 'row_number' cannot be resolved");
         assertUpdate(getSession(), "DROP TABLE n");
+    }
+
+    @Override
+    protected String defaultCanonicalize(String value)
+    {
+        return value.toUpperCase(ENGLISH);
     }
 }

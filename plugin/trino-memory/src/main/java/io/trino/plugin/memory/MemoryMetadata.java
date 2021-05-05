@@ -67,6 +67,7 @@ import static io.trino.spi.StandardErrorCode.NOT_FOUND;
 import static io.trino.spi.StandardErrorCode.SCHEMA_NOT_EMPTY;
 import static io.trino.spi.connector.SampleType.SYSTEM;
 import static java.lang.String.format;
+import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 @ThreadSafe
@@ -416,5 +417,14 @@ public class MemoryMetadata
         }
 
         return Optional.of(new MemoryTableHandle(table.getId(), table.getLimit(), OptionalDouble.of(table.getSampleRatio().orElse(1) * sampleRatio)));
+    }
+
+    @Override
+    public String canonicalize(ConnectorSession session, String identifier, boolean delimited)
+    {
+        if (delimited) {
+            return identifier;
+        }
+        return identifier.toUpperCase(ENGLISH);
     }
 }
