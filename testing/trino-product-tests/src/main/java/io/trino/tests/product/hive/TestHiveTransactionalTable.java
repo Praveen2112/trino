@@ -1401,19 +1401,22 @@ public class TestHiveTransactionalTable
         // TODO support UPDATE with correlated subquery in assignment
         withTemporaryTable("test_update_subquery", true, false, NONE, tableName -> {
             onTrino().executeQuery(format("CREATE TABLE %s (column1 INT, column2 varchar) WITH (transactional = true)", tableName));
-            onTrino().executeQuery(format("INSERT INTO %s VALUES (1, 'x')", tableName));
-            onTrino().executeQuery(format("INSERT INTO %s VALUES (2, 'y')", tableName));
+            onTrino().executeQuery(format("INSERT INTO %s VALUES (1, 'x'), (2, 'y')", tableName));
 
             // SET with uncorrelated subquery
             onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region)", tableName));
             verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "MIDDLE EAST"), row(2, "MIDDLE EAST"));
 
-            // If not compacted it might generate two similar delta files during next update https://issues.apache.org/jira/browse/HIVE-22318
-            compactTableAndWait(MAJOR, tableName, "", new Duration(6, MINUTES));
+            // SET with uncorrelated subquery
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM tpch.tiny.region)", tableName));
+            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "AFRICA"), row(2, "AFRICA"));
+
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region)", tableName));
+            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "MIDDLE EAST"), row(2, "MIDDLE EAST"));
 
             withTemporaryTable("second_table", true, false, NONE, secondTable -> {
                 onTrino().executeQuery(format("CREATE TABLE %s WITH (transactional = true) AS TABLE tpch.tiny.region", secondTable));
-
+                onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM tpch.tiny.region)", tableName));
                 // UPDATE while reading from another transactional table. Multiple transactional could interfere with ConnectorMetadata.beginQuery
                 verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "AFRICA"), row(2, "AFRICA"));
             });
