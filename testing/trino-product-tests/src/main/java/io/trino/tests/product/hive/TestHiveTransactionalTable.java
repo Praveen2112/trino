@@ -1401,21 +1401,31 @@ public class TestHiveTransactionalTable
         // TODO support UPDATE with correlated subquery in assignment
         withTemporaryTable("test_update_subquery", true, false, NONE, tableName -> {
             onTrino().executeQuery(format("CREATE TABLE %s (column1 INT, column2 varchar) WITH (transactional = true)", tableName));
-            onTrino().executeQuery(format("INSERT INTO %s VALUES (1, 'x')", tableName));
-            onTrino().executeQuery(format("INSERT INTO %s VALUES (2, 'y')", tableName));
+            onTrino().executeQuery(format("INSERT INTO %s VALUES (1, 'x'), (0, 'z')", tableName));
+            onTrino().executeQuery(format("INSERT INTO %s VALUES (2, 'y'), (0, 'a')", tableName));
 
             // SET with uncorrelated subquery
-            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region)", tableName));
-            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "MIDDLE EAST"), row(2, "MIDDLE EAST"));
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region) WHERE column1 = 1", tableName));
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region) WHERE column1 = 2", tableName));
+            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "MIDDLE EAST"), row(2, "MIDDLE EAST"), row(0, "z"), row(0, "a"));
 
-            // If not compacted it might generate two similar delta files during next update https://issues.apache.org/jira/browse/HIVE-22318
-            compactTableAndWait(MAJOR, tableName, "", new Duration(6, MINUTES));
+            // SET with uncorrelated subquery
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM tpch.tiny.region) WHERE column1 = 1", tableName));
+
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM tpch.tiny.region) WHERE column1 = 2", tableName));
+            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "AFRICA"), row(2, "AFRICA"), row(0, "z"), row(0, "a"));
+
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region) WHERE column1 = 1", tableName));
+            onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT max(name) FROM tpch.tiny.region) WHERE column1 = 2", tableName));
+
+            verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "MIDDLE EAST"), row(2, "MIDDLE EAST"), row(0, "z"), row(0, "a"));
 
             withTemporaryTable("second_table", true, false, NONE, secondTable -> {
                 onTrino().executeQuery(format("CREATE TABLE %s WITH (transactional = true) AS TABLE tpch.tiny.region", secondTable));
-
+                onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM %s) WHERE column1 = 1", tableName, secondTable));
+                onTrino().executeQuery(format("UPDATE %s SET column2 = (SELECT min(name) FROM %s) WHERE column1 = 2", tableName, secondTable));
                 // UPDATE while reading from another transactional table. Multiple transactional could interfere with ConnectorMetadata.beginQuery
-                verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "AFRICA"), row(2, "AFRICA"));
+                verifySelectForTrinoAndHive("SELECT * FROM " + tableName, "true", row(1, "AFRICA"), row(2, "AFRICA"), row(0, "z"), row(0, "a"));
             });
 
             // SET with correlated subquery
