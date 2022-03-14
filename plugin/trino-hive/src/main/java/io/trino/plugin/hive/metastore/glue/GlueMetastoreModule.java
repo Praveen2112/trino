@@ -13,6 +13,11 @@
  */
 package io.trino.plugin.hive.metastore.glue;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
 import com.amazonaws.handlers.RequestHandler2;
 import com.amazonaws.services.glue.model.Table;
 import com.google.inject.Binder;
@@ -37,6 +42,7 @@ import static com.google.inject.multibindings.OptionalBinder.newOptionalBinder;
 import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 import static io.airlift.configuration.ConditionalModule.conditionalModule;
 import static io.airlift.configuration.ConfigBinder.configBinder;
+import static java.lang.String.format;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
@@ -102,6 +108,32 @@ public class GlueMetastoreModule
         return createExecutor("hive-glue-statistics-write-%s", hiveConfig.getWriteStatisticsThreads());
     }
 
+    @Provides
+    @Singleton
+    @ForGlueHiveMetastore
+    public AWSCredentialsProvider getAwsCredentialsProvider(GlueHiveMetastoreConfig config)
+    {
+        if (config.getAwsCredentialsProvider().isPresent()) {
+            return getCustomAWSCredentialsProvider(config.getAwsCredentialsProvider().get());
+        }
+        AWSCredentialsProvider provider;
+        if (config.getAwsAccessKey().isPresent() && config.getAwsSecretKey().isPresent()) {
+            provider = new AWSStaticCredentialsProvider(
+                    new BasicAWSCredentials(config.getAwsAccessKey().get(), config.getAwsSecretKey().get()));
+        }
+        else {
+            provider = DefaultAWSCredentialsProviderChain.getInstance();
+        }
+        if (config.getIamRole().isPresent()) {
+            provider = new STSAssumeRoleSessionCredentialsProvider
+                    .Builder(config.getIamRole().get(), "trino-session")
+                    .withExternalId(config.getExternalId().orElse(null))
+                    .withLongLivedCredentialsProvider(provider)
+                    .build();
+        }
+        return provider;
+    }
+
     private Executor createExecutor(String nameTemplate, int threads)
     {
         if (threads == 1) {
@@ -110,5 +142,19 @@ public class GlueMetastoreModule
         return new BoundedExecutor(
                 newCachedThreadPool(daemonThreadsNamed(nameTemplate)),
                 threads);
+    }
+
+    private AWSCredentialsProvider getCustomAWSCredentialsProvider(String providerClass)
+    {
+        try {
+            Object instance = Class.forName(providerClass).getConstructor().newInstance();
+            if (!(instance instanceof AWSCredentialsProvider)) {
+                throw new RuntimeException("Invalid credentials provider class: " + instance.getClass().getName());
+            }
+            return (AWSCredentialsProvider) instance;
+        }
+        catch (ReflectiveOperationException e) {
+            throw new RuntimeException(format("Error creating an instance of %s", providerClass), e);
+        }
     }
 }
