@@ -47,6 +47,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.trino.SystemSessionProperties.preferPartialAggregation;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.sql.planner.plan.AggregationNode.Step.FINAL;
 import static io.trino.sql.planner.plan.AggregationNode.Step.PARTIAL;
 import static io.trino.sql.planner.plan.AggregationNode.Step.SINGLE;
@@ -230,13 +231,15 @@ public class PushPartialAggregationThroughExchange
                                     .addAll(originalAggregation.getArguments().stream()
                                             .filter(Lambda.class::isInstance)
                                             .collect(toImmutableList()))
+                                    .addAll(originalAggregation.getArguments())
                                     .build(),
                             false,
                             Optional.empty(),
                             Optional.empty(),
-                            Optional.empty()));
+                            originalAggregation.getMask()));
         }
 
+        Optional<Symbol> rawInputMaskSymbol = Optional.of(context.getSymbolAllocator().newSymbol("rawInputMaskSymbol", BOOLEAN));
         PlanNode partial = new AggregationNode(
                 context.getIdAllocator().getNextId(),
                 node.getSource(),
@@ -247,7 +250,9 @@ public class PushPartialAggregationThroughExchange
                 ImmutableList.of(),
                 PARTIAL,
                 node.getHashSymbol(),
-                node.getGroupIdSymbol());
+                node.getGroupIdSymbol(),
+                rawInputMaskSymbol,
+                Optional.empty());
 
         return new AggregationNode(
                 node.getId(),
@@ -259,6 +264,8 @@ public class PushPartialAggregationThroughExchange
                 ImmutableList.of(),
                 FINAL,
                 node.getHashSymbol(),
-                node.getGroupIdSymbol());
+                node.getGroupIdSymbol(),
+                rawInputMaskSymbol,
+                Optional.empty());
     }
 }

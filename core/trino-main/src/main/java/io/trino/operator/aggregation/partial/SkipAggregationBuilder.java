@@ -49,6 +49,7 @@ import static java.util.Objects.requireNonNull;
 public class SkipAggregationBuilder
         implements HashAggregationBuilder
 {
+    private final PartialAggregationOutputProcessor partialAggregationOutputProcessor;
     private final LocalMemoryContext memoryContext;
     private final GroupByHash groupByHash;
     private final List<AggregatorFactory> aggregatorFactories;
@@ -67,8 +68,9 @@ public class SkipAggregationBuilder
             OperatorContext operatorContext,
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
-            AggregationMetrics aggregationMetrics,
-            HyperLogLog hyperLogLog)
+            HyperLogLog hyperLogLog,
+            PartialAggregationOutputProcessor partialAggregationOutputProcessor,
+            AggregationMetrics aggregationMetrics)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -77,6 +79,7 @@ public class SkipAggregationBuilder
                 expectedGroups,
                 hashStrategyCompiler,
                 UpdateMemory.NOOP);
+        this.partialAggregationOutputProcessor = requireNonNull(partialAggregationOutputProcessor, "partialAggregationOutputProcessor is null");
         this.memoryContext = requireNonNull(memoryContext, "memoryContext is null");
         this.aggregatorFactories = ImmutableList.copyOf(requireNonNull(aggregatorFactories, "aggregatorFactories is null"));
         this.hashChannels = new int[groupByChannels.size() + (inputHashChannel.isPresent() ? 1 : 0)];
@@ -103,7 +106,7 @@ public class SkipAggregationBuilder
             return WorkProcessor.of();
         }
 
-        Page result = buildOutputPage(currentPage);
+        Page result = partialAggregationOutputProcessor.processRawInputPage(currentPage);
         //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
         groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
