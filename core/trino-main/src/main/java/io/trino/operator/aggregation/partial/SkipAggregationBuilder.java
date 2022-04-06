@@ -50,6 +50,7 @@ import static java.util.Objects.requireNonNull;
 public class SkipAggregationBuilder
         implements HashAggregationBuilder
 {
+    private final Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor;
     private final LocalMemoryContext memoryContext;
     private final GroupByHash groupByHash;
     private final List<AggregatorFactory> aggregatorFactories;
@@ -71,7 +72,8 @@ public class SkipAggregationBuilder
             FlatHashStrategyCompiler hashStrategyCompiler,
             AggregationMetrics aggregationMetrics,
             HyperLogLog hyperLogLog,
-            CpcSketch cpcSketch)
+            CpcSketch cpcSketch,
+            Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -80,6 +82,7 @@ public class SkipAggregationBuilder
                 expectedGroups,
                 hashStrategyCompiler,
                 UpdateMemory.NOOP);
+        this.partialAggregationOutputProcessor = requireNonNull(partialAggregationOutputProcessor, "partialAggregationOutputProcessor is null");
         this.memoryContext = requireNonNull(memoryContext, "memoryContext is null");
         this.aggregatorFactories = ImmutableList.copyOf(requireNonNull(aggregatorFactories, "aggregatorFactories is null"));
         this.hashChannels = new int[groupByChannels.size() + (inputHashChannel.isPresent() ? 1 : 0)];
@@ -107,7 +110,7 @@ public class SkipAggregationBuilder
             return WorkProcessor.of();
         }
 
-        Page result = buildOutputPage(currentPage);
+        Page result = partialAggregationOutputProcessor.map(processor -> processor.processRawInputPage(currentPage)).orElse(currentPage);
         long start = System.nanoTime();
         long[] hashes = groupByHash.getHashes(currentPage.getLoadedPage(this.hashChannels));
         for (long hash : hashes) {

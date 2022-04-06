@@ -333,17 +333,20 @@ public class PushPartialAggregationThroughJoin
             AggregationNode.Aggregation aggregation = entry.getValue();
             ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
 
+            ImmutableList.Builder<Expression> argumentsBuilder = ImmutableList.builder();
+            argumentsBuilder.add(entry.getKey().toSymbolReference());
+            argumentsBuilder.addAll(aggregation.getArguments().stream()
+                    .filter(Lambda.class::isInstance)
+                    .collect(toImmutableList()));
+            argumentsBuilder.addAll(aggregation.getRawInputs().map(Symbol::toSymbolReference).collect(toImmutableSet()));
+            //partialAggregation.getRawInputMaskSymbol().ifPresent(symbol -> argumentsBuilder.add(symbol.toSymbolReference()));
+
             // rewrite partial aggregation in terms of intermediate function
             intermediateAggregation.put(
                     entry.getKey(),
                     new AggregationNode.Aggregation(
                             resolvedFunction,
-                            ImmutableList.<Expression>builder()
-                                    .add(entry.getKey().toSymbolReference())
-                                    .addAll(aggregation.getArguments().stream()
-                                            .filter(Lambda.class::isInstance)
-                                            .collect(toImmutableList()))
-                                    .build(),
+                            argumentsBuilder.build(),
                             false,
                             Optional.empty(),
                             Optional.empty(),
@@ -361,6 +364,8 @@ public class PushPartialAggregationThroughJoin
                 INTERMEDIATE,
                 // hash symbol is not supported by this rule
                 Optional.empty(),
-                partialAggregation.getGroupIdSymbol());
+                partialAggregation.getGroupIdSymbol(),
+                partialAggregation.getRawInputMaskSymbol(),
+                Optional.empty());
     }
 }

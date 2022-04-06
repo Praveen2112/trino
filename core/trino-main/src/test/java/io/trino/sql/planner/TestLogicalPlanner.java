@@ -266,7 +266,7 @@ public class TestLogicalPlanner
         assertDistributedPlan("SELECT orderstatus, sum(totalprice) FROM orders GROUP BY orderstatus",
                 anyTree(
                         aggregation(
-                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum"))),
+                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum", "totalprice"))),
                                 FINAL,
                                 exchange(LOCAL, GATHER,
                                         exchange(REMOTE, REPARTITION,
@@ -279,7 +279,7 @@ public class TestLogicalPlanner
         assertDistributedPlan("SELECT orderstatus, sum(totalprice) FROM orders WHERE orderstatus='O' GROUP BY orderstatus",
                 anyTree(
                         aggregation(
-                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum"))),
+                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum", "totalprice"))),
                                 FINAL,
                                 exchange(LOCAL, GATHER,
                                         exchange(REMOTE, REPARTITION,
@@ -302,8 +302,8 @@ public class TestLogicalPlanner
                                         ImmutableMap.of("row", expression(new Row(ImmutableList.of(new Reference(BIGINT, "min"), new Reference(BIGINT, "max"))))),
                                         aggregation(
                                                 ImmutableMap.of(
-                                                        "min", aggregationFunction("min", ImmutableList.of("min_regionkey")),
-                                                        "max", aggregationFunction("max", ImmutableList.of("max_name"))),
+                                                        "min", aggregationFunction("min", ImmutableList.of("min_regionkey", "REGIONKEY")),
+                                                        "max", aggregationFunction("max", ImmutableList.of("max_name", "NAME"))),
                                                 FINAL,
                                                 any(
                                                         aggregation(
@@ -2157,7 +2157,7 @@ public class TestLogicalPlanner
                 output(
                         anyTree(
                                 aggregation(
-                                        ImmutableMap.of("final_count", aggregationFunction("count", ImmutableList.of("partial_count"))),
+                                        ImmutableMap.of("final_count", aggregationFunction("count", ImmutableList.of("partial_count", "CONSTANT"))),
                                         FINAL,
                                         exchange(
                                                 LOCAL,

@@ -13,7 +13,6 @@
  */
 package io.trino.operator.aggregation;
 
-import com.google.common.primitives.Ints;
 import io.trino.operator.AggregationMetrics;
 import io.trino.spi.Page;
 import io.trino.spi.block.Block;
@@ -21,44 +20,38 @@ import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.Type;
 import io.trino.sql.planner.plan.AggregationNode;
 import io.trino.sql.planner.plan.AggregationNode.Step;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalInt;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class GroupedAggregator
+        extends AbstractAggregator
 {
     private final GroupedAccumulator accumulator;
     private AggregationNode.Step step;
     private final Type intermediateType;
     private final Type finalType;
-    private final int[] inputChannels;
-    private final OptionalInt maskChannel;
-    private final AggregationMaskBuilder maskBuilder;
-    private final AggregationMetrics metrics;
 
     public GroupedAggregator(
             GroupedAccumulator accumulator,
             Step step,
             Type intermediateType,
             Type finalType,
-            List<Integer> inputChannels,
+            List<Integer> rawInputChannels,
+            OptionalInt intermediateStateChannel,
+            OptionalInt rawInputMaskChannel,
             OptionalInt maskChannel,
             AggregationMaskBuilder maskBuilder,
             AggregationMetrics metrics)
     {
+        super(step, intermediateType, finalType, rawInputChannels, intermediateStateChannel, rawInputMaskChannel, maskChannel, maskBuilder, metrics);
         this.accumulator = requireNonNull(accumulator, "accumulator is null");
         this.step = requireNonNull(step, "step is null");
         this.intermediateType = requireNonNull(intermediateType, "intermediateType is null");
         this.finalType = requireNonNull(finalType, "finalType is null");
-        this.inputChannels = Ints.toArray(requireNonNull(inputChannels, "inputChannels is null"));
-        this.maskChannel = requireNonNull(maskChannel, "maskChannel is null");
-        this.maskBuilder = requireNonNull(maskBuilder, "maskBuilder is null");
-        this.metrics = requireNonNull(metrics, "metrics is null");
-        checkArgument(step.isInputRaw() || inputChannels.size() == 1, "expected 1 input channel for intermediate aggregation");
     }
 
     public long getEstimatedSize()
@@ -78,28 +71,31 @@ public class GroupedAggregator
     {
         accumulator.setGroupCount(groupCount);
 
-        if (step.isInputRaw()) {
-            Page arguments = page.getColumns(inputChannels);
-            Optional<Block> maskBlock = Optional.empty();
-            if (maskChannel.isPresent()) {
-                maskBlock = Optional.of(page.getBlock(maskChannel.getAsInt()).getLoadedBlock());
+        processPage(page, new AccumulatorWrapper()
+        {
+            @Override
+            public void addInput(Page page, AggregationMask aggregationMask)
+            {
+                accumulator.addInput(groupIds, page, aggregationMask);
             }
-            AggregationMask mask = maskBuilder.buildAggregationMask(arguments, maskBlock);
 
-            if (mask.isSelectNone()) {
-                return;
+            @Override
+            public void addIntermediate(Block block)
+            {
+                accumulator.addIntermediate(groupIds, block);
             }
-            // Unwrap any LazyBlock values before evaluating the accumulator
-            arguments = arguments.getLoadedPage();
-            long start = System.nanoTime();
-            accumulator.addInput(groupIds, arguments, mask);
-            metrics.recordAccumulatorUpdateTimeSince(start);
-        }
-        else {
-            long start = System.nanoTime();
-            accumulator.addIntermediate(groupIds, page.getBlock(inputChannels[0]));
-            metrics.recordAccumulatorUpdateTimeSince(start);
-        }
+
+            @Override
+            public void addIntermediate(IntArrayList positions, Block intermediateStateBlock)
+            {
+                if (positions.size() != intermediateStateBlock.getPositionCount()) {
+                    // some rows were eliminated by the filter
+                    intermediateStateBlock = intermediateStateBlock.getPositions(positions.elements(), 0, positions.size());
+                }
+
+                accumulator.addIntermediate(groupIds, intermediateStateBlock);
+            }
+        });
     }
 
     public void prepareFinal()
@@ -109,22 +105,11 @@ public class GroupedAggregator
 
     public void evaluate(int groupId, BlockBuilder output)
     {
-        if (step.isOutputPartial()) {
+        if (isOutputPartial()) {
             accumulator.evaluateIntermediate(groupId, output);
         }
         else {
             accumulator.evaluateFinal(groupId, output);
         }
-    }
-
-    // todo this should return a new GroupedAggregator instead of modifying the existing object
-    public void setSpillOutput()
-    {
-        step = AggregationNode.Step.partialOutput(step);
-    }
-
-    public Type getSpillType()
-    {
-        return intermediateType;
     }
 }

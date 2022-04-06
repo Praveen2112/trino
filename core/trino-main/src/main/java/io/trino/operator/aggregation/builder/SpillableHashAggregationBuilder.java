@@ -24,6 +24,7 @@ import io.trino.operator.OperatorContext;
 import io.trino.operator.Work;
 import io.trino.operator.WorkProcessor;
 import io.trino.operator.aggregation.AggregatorFactory;
+import io.trino.operator.aggregation.partial.PartialAggregationOutputProcessor;
 import io.trino.spi.Page;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.TypeOperators;
@@ -53,6 +54,7 @@ public class SpillableHashAggregationBuilder
     private final int expectedGroups;
     private final List<Type> groupByTypes;
     private final List<Integer> groupByChannels;
+    private final Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor;
     private final Optional<Integer> hashChannel;
     private final OperatorContext operatorContext;
     private final LocalMemoryContext localUserMemoryContext;
@@ -78,6 +80,7 @@ public class SpillableHashAggregationBuilder
             int expectedGroups,
             List<Type> groupByTypes,
             List<Integer> groupByChannels,
+            Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor,
             Optional<Integer> hashChannel,
             OperatorContext operatorContext,
             DataSize memoryLimitForMerge,
@@ -92,6 +95,7 @@ public class SpillableHashAggregationBuilder
         this.expectedGroups = expectedGroups;
         this.groupByTypes = groupByTypes;
         this.groupByChannels = groupByChannels;
+        this.partialAggregationOutputProcessor = partialAggregationOutputProcessor;
         this.hashChannel = hashChannel;
         this.operatorContext = operatorContext;
         this.localUserMemoryContext = operatorContext.localUserMemoryContext();
@@ -266,6 +270,7 @@ public class SpillableHashAggregationBuilder
                 step,
                 expectedGroups,
                 groupByTypes,
+                partialAggregationOutputProcessor,
                 hashChannel,
                 operatorContext,
                 sortedPages,
@@ -290,6 +295,7 @@ public class SpillableHashAggregationBuilder
                 expectedGroups,
                 groupByTypes,
                 groupByChannels,
+                partialAggregationOutputProcessor,
                 hashChannel,
                 operatorContext,
                 Optional.of(DataSize.succinctBytes(0)),

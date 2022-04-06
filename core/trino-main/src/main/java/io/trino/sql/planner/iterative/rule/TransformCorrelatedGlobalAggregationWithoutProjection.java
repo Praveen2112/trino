@@ -261,6 +261,8 @@ public class TransformCorrelatedGlobalAggregationWithoutProjection
                 ImmutableList.of(),
                 globalAggregation.getStep(),
                 Optional.empty(),
+                Optional.empty(),
+                globalAggregation.getRawInputMaskSymbol(),
                 Optional.empty());
 
         // restrict outputs

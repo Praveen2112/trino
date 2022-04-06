@@ -151,6 +151,8 @@ public class TransformCorrelatedDistinctAggregationWithProjection
                 ImmutableList.of(),
                 aggregation.getStep(),
                 Optional.empty(),
+                Optional.empty(),
+                aggregation.getRawInputMaskSymbol(),
                 Optional.empty());
 
         // restrict outputs and apply projection

@@ -107,7 +107,8 @@ public class TestPushPartialAggregationThroughJoin
                                         Optional.of(new Comparison(LESS_THAN_OR_EQUAL, new Reference(BIGINT, "LEFT_NON_EQUI"), new Reference(BIGINT, "RIGHT_NON_EQUI")))))
                         .addAggregation(p.symbol("AVG", DOUBLE), aggregation("avg", ImmutableList.of(new Reference(BIGINT, "RIGHT_AGGR"))), ImmutableList.of(DOUBLE))
                         .singleGroupingSet(p.symbol("RIGHT_GROUP_BY"), p.symbol("RIGHT_EQUI"), p.symbol("RIGHT_NON_EQUI"))
-                        .step(PARTIAL)))
+                        .step(PARTIAL)
+                        .rawInputMaskSymbol()))
                 .matches(project(ImmutableMap.of(
                                 "RIGHT_GROUP_BY", PlanMatchPattern.expression(new Reference(BIGINT, "RIGHT_GROUP_BY")),
                                 "RIGHT_EQUI", PlanMatchPattern.expression(new Reference(BIGINT, "RIGHT_EQUI")),

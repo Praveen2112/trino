@@ -34,8 +34,6 @@ import org.junit.jupiter.api.Test;
 
 import static io.trino.SessionTestUtils.TEST_SESSION;
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.sql.planner.plan.AggregationNode.Step.FINAL;
-import static io.trino.sql.planner.plan.AggregationNode.Step.PARTIAL;
 import static io.trino.sql.planner.plan.AggregationNode.groupingSets;
 import static io.trino.sql.planner.plan.ExchangeNode.Scope.LOCAL;
 import static io.trino.sql.planner.plan.ExchangeNode.Scope.REMOTE;
@@ -71,10 +69,9 @@ public class TestValidateAggregationsWithDefaultValues
     public void testGloballyDistributedFinalAggregationInTheSameStageAsPartialAggregation()
     {
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
-                        .source(builder.aggregation(ap -> ap
-                                .step(PARTIAL)
+                        .source(af.partialAggregation(ap -> ap
                                 .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                 .source(tableScanNode))));
         assertThatThrownBy(() -> validatePlan(root, false))
@@ -86,10 +83,9 @@ public class TestValidateAggregationsWithDefaultValues
     public void testSingleNodeFinalAggregationInTheSameStageAsPartialAggregation()
     {
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
-                        .source(builder.aggregation(ap -> ap
-                                .step(PARTIAL)
+                        .source(af.partialAggregation(ap -> ap
                                 .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                 .source(tableScanNode))));
         assertThatThrownBy(() -> validatePlan(root, true))
@@ -101,10 +97,9 @@ public class TestValidateAggregationsWithDefaultValues
     public void testSingleThreadFinalAggregationInTheSameStageAsPartialAggregation()
     {
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
-                        .source(builder.aggregation(ap -> ap
-                                .step(PARTIAL)
+                        .source(af.partialAggregation(ap -> ap
                                 .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                 .source(builder.values()))));
         validatePlan(root, true);
@@ -115,15 +110,14 @@ public class TestValidateAggregationsWithDefaultValues
     {
         Symbol symbol = new Symbol(UNKNOWN, "symbol");
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                         .source(builder.exchange(e -> e
                                 .type(REPARTITION)
                                 .scope(REMOTE)
                                 .fixedHashDistributionPartitioningScheme(ImmutableList.of(symbol), ImmutableList.of(symbol))
                                 .addInputsSet(symbol)
-                                .addSource(builder.aggregation(ap -> ap
-                                        .step(PARTIAL)
+                                .addSource(af.partialAggregation(ap -> ap
                                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                         .source(tableScanNode))))));
         validatePlan(root, false);
@@ -134,15 +128,14 @@ public class TestValidateAggregationsWithDefaultValues
     {
         Symbol symbol = new Symbol(UNKNOWN, "symbol");
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                         .source(builder.exchange(e -> e
                                 .type(REPARTITION)
                                 .scope(LOCAL)
                                 .fixedHashDistributionPartitioningScheme(ImmutableList.of(symbol), ImmutableList.of(symbol))
                                 .addInputsSet(symbol)
-                                .addSource(builder.aggregation(ap -> ap
-                                        .step(PARTIAL)
+                                .addSource(af.partialAggregation(ap -> ap
                                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                         .source(tableScanNode))))));
         validatePlan(root, true);
@@ -153,7 +146,7 @@ public class TestValidateAggregationsWithDefaultValues
     {
         Symbol symbol = new Symbol(UNKNOWN, "symbol");
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                         .source(builder.join(
                                 INNER,
@@ -162,8 +155,7 @@ public class TestValidateAggregationsWithDefaultValues
                                         .scope(LOCAL)
                                         .fixedHashDistributionPartitioningScheme(ImmutableList.of(symbol), ImmutableList.of(symbol))
                                         .addInputsSet(symbol)
-                                        .addSource(builder.aggregation(ap -> ap
-                                                .step(PARTIAL)
+                                        .addSource(af.partialAggregation(ap -> ap
                                                 .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                                 .source(tableScanNode)))),
                                 builder.values())));
@@ -175,12 +167,11 @@ public class TestValidateAggregationsWithDefaultValues
     {
         Symbol symbol = new Symbol(UNKNOWN, "symbol");
         PlanNode root = builder.aggregation(
-                af -> af.step(FINAL)
+                af -> af.finalAggregation()
                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                         .source(builder.join(
                                 INNER,
-                                builder.aggregation(ap -> ap
-                                        .step(PARTIAL)
+                                af.partialAggregation(ap -> ap
                                         .groupingSets(groupingSets(ImmutableList.of(symbol), 2, ImmutableSet.of(0)))
                                         .source(tableScanNode)),
                                 builder.values())));

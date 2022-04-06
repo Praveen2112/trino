@@ -95,15 +95,20 @@ public class TestingAggregationFunction
 
     public AggregatorFactory createAggregatorFactory(Step step, List<Integer> inputChannels, OptionalInt maskChannel)
     {
-        return createAggregatorFactory(step, inputChannels, maskChannel, factory);
+        return createAggregatorFactory(step, inputChannels, maskChannel, OptionalInt.empty(), factory);
+    }
+
+    public AggregatorFactory createAggregatorFactory(Step step, List<Integer> inputChannels, OptionalInt maskChannel, OptionalInt rawInputMaskChannel)
+    {
+        return createAggregatorFactory(step, inputChannels, maskChannel, rawInputMaskChannel, factory);
     }
 
     public AggregatorFactory createDistinctAggregatorFactory(Step step, List<Integer> inputChannels, OptionalInt maskChannel)
     {
-        return createAggregatorFactory(step, inputChannels, maskChannel, distinctFactory);
+        return createAggregatorFactory(step, inputChannels, maskChannel, OptionalInt.empty(), distinctFactory);
     }
 
-    private AggregatorFactory createAggregatorFactory(Step step, List<Integer> inputChannels, OptionalInt maskChannel, AccumulatorFactory distinctFactory)
+    private AggregatorFactory createAggregatorFactory(Step step, List<Integer> inputChannels, OptionalInt maskChannel, OptionalInt rawInputMaskChannel, AccumulatorFactory distinctFactory)
     {
         return new AggregatorFactory(
                 distinctFactory,
@@ -111,6 +116,7 @@ public class TestingAggregationFunction
                 intermediateType,
                 finalType,
                 inputChannels,
+                rawInputMaskChannel,
                 maskChannel,
                 true,
                 ImmutableList.of());
