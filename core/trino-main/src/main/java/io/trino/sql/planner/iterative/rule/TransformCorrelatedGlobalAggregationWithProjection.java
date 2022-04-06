@@ -284,6 +284,8 @@ public class TransformCorrelatedGlobalAggregationWithProjection
                 ImmutableList.of(),
                 globalAggregation.getStep(),
                 Optional.empty(),
+                Optional.empty(),
+                globalAggregation.getRawInputMaskSymbol(),
                 Optional.empty());
 
         // restrict outputs and apply projection

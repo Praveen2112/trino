@@ -75,6 +75,8 @@ class AggregationDecorrelation
                 ImmutableList.of(),
                 distinct.getStep(),
                 Optional.empty(),
+                Optional.empty(),
+                distinct.getRawInputMaskSymbol(),
                 Optional.empty());
     }
 }

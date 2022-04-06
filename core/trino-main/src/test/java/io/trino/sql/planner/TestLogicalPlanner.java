@@ -67,7 +67,6 @@ import io.trino.sql.planner.plan.JoinNode;
 import io.trino.sql.planner.plan.LimitNode;
 import io.trino.sql.planner.plan.MarkDistinctNode;
 import io.trino.sql.planner.plan.PlanNode;
-import io.trino.sql.planner.plan.ProjectNode;
 import io.trino.sql.planner.plan.SemiJoinNode;
 import io.trino.sql.planner.plan.SemiJoinNode.DistributionType;
 import io.trino.sql.planner.plan.SortNode;
@@ -274,7 +273,7 @@ public class TestLogicalPlanner
         assertDistributedPlan("SELECT orderstatus, sum(totalprice) FROM orders GROUP BY orderstatus",
                 anyTree(
                         aggregation(
-                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum"))),
+                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum", "totalprice"))),
                                 FINAL,
                                 exchange(LOCAL, GATHER,
                                         exchange(REMOTE, REPARTITION,
@@ -287,7 +286,7 @@ public class TestLogicalPlanner
         assertDistributedPlan("SELECT orderstatus, sum(totalprice) FROM orders WHERE orderstatus='O' GROUP BY orderstatus",
                 anyTree(
                         aggregation(
-                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum"))),
+                                ImmutableMap.of("final_sum", aggregationFunction("sum", ImmutableList.of("partial_sum", "totalprice"))),
                                 FINAL,
                                 exchange(LOCAL, GATHER,
                                         exchange(REMOTE, REPARTITION,
@@ -310,8 +309,8 @@ public class TestLogicalPlanner
                                         ImmutableMap.of("row", expression(new Row(ImmutableList.of(new Reference(BIGINT, "min"), new Reference(BIGINT, "max"))))),
                                         aggregation(
                                                 ImmutableMap.of(
-                                                        "min", aggregationFunction("min", ImmutableList.of("min_regionkey")),
-                                                        "max", aggregationFunction("max", ImmutableList.of("max_name"))),
+                                                        "min", aggregationFunction("min", ImmutableList.of("min_regionkey", "REGIONKEY")),
+                                                        "max", aggregationFunction("max", ImmutableList.of("max_name", "NAME"))),
                                                 FINAL,
                                                 any(
                                                         aggregation(
@@ -2042,31 +2041,6 @@ public class TestLogicalPlanner
     }
 
     @Test
-    public void testRedundantHashRemovalForUnionAllAndMarkDistinct()
-    {
-        assertDistributedPlan(
-                "SELECT count(distinct(custkey)), count(distinct(nationkey)) FROM ((SELECT custkey, nationkey FROM customer) UNION ALL ( SELECT custkey, custkey FROM customer))",
-                Session.builder(getPlanTester().getDefaultSession())
-                        .setSystemProperty(DISTINCT_AGGREGATIONS_STRATEGY, "mark_distinct")
-                        .setSystemProperty(OPTIMIZE_HASH_GENERATION, "true")
-                        .build(),
-                output(
-                        anyTree(
-                                node(MarkDistinctNode.class,
-                                        anyTree(
-                                                node(MarkDistinctNode.class,
-                                                        exchange(LOCAL, REPARTITION,
-                                                                exchange(REMOTE, REPARTITION,
-                                                                        project(ImmutableMap.of(
-                                                                                        "hash_custkey", expression(new Call(COMBINE_HASH, ImmutableList.of(new Constant(BIGINT, 0L), new Coalesce(new Call(HASH_CODE, ImmutableList.of(new Reference(BIGINT, "custkey"))), new Constant(BIGINT, 0L))))),
-                                                                                        "hash_nationkey", expression(new Call(COMBINE_HASH, ImmutableList.of(new Constant(BIGINT, 0L), new Coalesce(new Call(HASH_CODE, ImmutableList.of(new Reference(BIGINT, "nationkey"))), new Constant(BIGINT, 0L)))))),
-                                                                                tableScan("customer", ImmutableMap.of("custkey", "custkey", "nationkey", "nationkey")))),
-                                                                exchange(REMOTE, REPARTITION,
-                                                                        node(ProjectNode.class,
-                                                                                node(TableScanNode.class))))))))));
-    }
-
-    @Test
     public void testRemoveRedundantFilter()
     {
         assertPlan(
@@ -2233,7 +2207,7 @@ public class TestLogicalPlanner
                 output(
                         anyTree(
                                 aggregation(
-                                        ImmutableMap.of("final_count", aggregationFunction("count", ImmutableList.of("partial_count"))),
+                                        ImmutableMap.of("final_count", aggregationFunction("count", ImmutableList.of("partial_count", "CONSTANT"))),
                                         FINAL,
                                         exchange(
                                                 LOCAL,
