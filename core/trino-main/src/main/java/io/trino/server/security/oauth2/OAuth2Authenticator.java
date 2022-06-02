@@ -18,6 +18,7 @@ import io.trino.server.security.AbstractBearerAuthenticator;
 import io.trino.server.security.AuthenticationException;
 import io.trino.server.security.UserMapping;
 import io.trino.server.security.UserMappingException;
+import io.trino.server.security.oauth2.TokenPairSerializer.TokenPair;
 import io.trino.spi.security.BasicPrincipal;
 import io.trino.spi.security.Identity;
 
@@ -43,12 +44,16 @@ public class OAuth2Authenticator
     private final String principalField;
     private final Optional<String> groupsField;
     private final UserMapping userMapping;
+    private final TokenPairSerializer tokenPairSerializer;
+    private final TokenRefresher tokenRefresher;
 
     @Inject
-    public OAuth2Authenticator(OAuth2Client client, OAuth2Config config)
+    public OAuth2Authenticator(OAuth2Client client, OAuth2Config config, TokenRefresher tokenRefresher, TokenPairSerializer tokenPairSerializer)
     {
         this.client = requireNonNull(client, "service is null");
         this.principalField = config.getPrincipalField();
+        this.tokenRefresher = requireNonNull(tokenRefresher, "tokenRefresher is null");
+        this.tokenPairSerializer = requireNonNull(tokenPairSerializer, "tokenPairSerializer is null");
         groupsField = requireNonNull(config.getGroupsField(), "groupsField is null");
         userMapping = createUserMapping(config.getUserMappingPattern(), config.getUserMappingFile());
     }
@@ -57,7 +62,8 @@ public class OAuth2Authenticator
     protected Optional<Identity> createIdentity(String token)
             throws UserMappingException
     {
-        Optional<Map<String, Object>> claims = client.getClaims(token);
+        TokenPair tokenPair = tokenPairSerializer.deserialize(token);
+        Optional<Map<String, Object>> claims = client.getClaims(tokenPair.getAccessToken());
         if (claims.isEmpty()) {
             return Optional.empty();
         }
@@ -70,7 +76,17 @@ public class OAuth2Authenticator
     }
 
     @Override
-    protected AuthenticationException needAuthentication(ContainerRequestContext request, String message)
+    protected AuthenticationException needAuthentication(ContainerRequestContext request, Optional<String> currentToken, String message)
+    {
+        return currentToken
+                .map(tokenPairSerializer::deserialize)
+                .flatMap(tokenRefresher::refreshToken)
+                .map(refreshId -> request.getUriInfo().getBaseUri().resolve(getTokenUri(refreshId)))
+                .map(tokenUri -> new AuthenticationException(message, format("Bearer x_token_server=\"%s\"", tokenUri)))
+                .orElseGet(() -> needAuthentication(request, message));
+    }
+
+    private AuthenticationException needAuthentication(ContainerRequestContext request, String message)
     {
         UUID authId = UUID.randomUUID();
         URI initiateUri = request.getUriInfo().getBaseUri().resolve(getInitiateUri(authId));
