@@ -22,6 +22,7 @@ import io.airlift.configuration.AbstractConfigurationAwareModule;
 import io.trino.client.NodeVersion;
 
 import java.time.Clock;
+import java.time.Duration;
 
 import static io.airlift.configuration.ConfigBinder.configBinder;
 
@@ -34,6 +35,15 @@ public class JWETokenSerializerModule
         configBinder(binder).bindConfig(RefreshTokensConfig.class);
         configBinder(binder).bindConfig(SecretKeyConfig.class);
         binder.bind(JweSecretKeysProvider.class);
+    }
+
+    @Provides
+    @Singleton
+    @Inject
+    @ForRefreshTokens
+    public Duration getRefreshWindow(RefreshTokensConfig config)
+    {
+        return Duration.ofMillis(config.getRefreshTokenExpiration().toMillis());
     }
 
     @Provides

@@ -62,6 +62,7 @@ public class OAuth2Service
     public static final String HANDLER_STATE_CLAIM = "handler_state";
 
     private final OAuth2Client client;
+    private Duration refreshWindow;
     private final TokenPairSerializer tokenPairSerializer;
 
     private final String successHtml;
@@ -81,6 +82,7 @@ public class OAuth2Service
             OAuth2Config oauth2Config,
             OAuth2TokenHandler tokenHandler,
             TokenPairSerializer tokenPairSerializer,
+            @ForRefreshTokens Duration refreshWindow,
             Optional<OAuth2WebUiInstalled> webUiOAuthEnabled)
             throws IOException
     {
@@ -103,6 +105,7 @@ public class OAuth2Service
         this.tokenHandler = requireNonNull(tokenHandler, "tokenHandler is null");
         this.tokenPairSerializer = requireNonNull(tokenPairSerializer, "tokenPairSerializer is null");
 
+        this.refreshWindow = requireNonNull(refreshWindow, "refreshWindow is null");
         this.webUiOAuthEnabled = requireNonNull(webUiOAuthEnabled, "webUiOAuthEnabled is null").isPresent();
     }
 
@@ -170,7 +173,9 @@ public class OAuth2Service
             if (handlerState.isEmpty()) {
                 return Response
                         .seeOther(URI.create(UI_LOCATION))
-                        .cookie(OAuthWebUiCookie.create(oauth2Response.getAccessToken(), oauth2Response.getExpiration()), NonceCookie.delete())
+                        .cookie(
+                                OAuthWebUiCookie.create(tokenPairSerializer.serialize(TokenPair.fromOAuth2Response(oauth2Response)), oauth2Response.getExpiration().plus(refreshWindow)),
+                                NonceCookie.delete())
                         .build();
             }
 
@@ -178,7 +183,7 @@ public class OAuth2Service
 
             Response.ResponseBuilder builder = Response.ok(getSuccessHtml());
             if (webUiOAuthEnabled) {
-                builder.cookie(OAuthWebUiCookie.create(oauth2Response.getAccessToken(), oauth2Response.getExpiration()));
+                builder.cookie(OAuthWebUiCookie.create(tokenPairSerializer.serialize(TokenPair.fromOAuth2Response(oauth2Response)), oauth2Response.getExpiration().plus(refreshWindow)));
             }
             return builder.cookie(NonceCookie.delete()).build();
         }

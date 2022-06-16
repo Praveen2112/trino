@@ -15,12 +15,14 @@ package io.trino.server.security.oauth2;
 
 import com.google.inject.Binder;
 import com.google.inject.Inject;
+import com.google.inject.Key;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import io.airlift.configuration.AbstractConfigurationAwareModule;
 import io.trino.server.ui.OAuth2WebUiInstalled;
 
+import java.time.Duration;
 import java.util.concurrent.Executor;
 
 import static com.google.inject.multibindings.OptionalBinder.newOptionalBinder;
@@ -73,19 +75,20 @@ public class OAuth2ServiceModule
     private void disableRefreshTokens(Binder binder)
     {
         binder.bind(TokenPairSerializer.class).toInstance(ACCESS_TOKEN_ONLY_SERIALIZER);
+        binder.bind(Key.get(Duration.class, ForRefreshTokens.class)).toInstance(Duration.ofNanos(0));
     }
 
     @Singleton
     @Provides
     @Inject
-    public TokenRefresher getTokenRefresher(TokenPairSerializer tokenAssembler, OAuth2TokenHandler tokenHandler, OAuth2Client oAuth2Client, @ForTokenRefresher Executor refreshExecutor)
+    public TokenRefresher getTokenRefresher(TokenPairSerializer tokenAssembler, OAuth2TokenHandler tokenHandler, OAuth2Client oAuth2Client, @ForRefreshTokens Executor refreshExecutor)
     {
         return new TokenRefresher(tokenAssembler, tokenHandler, oAuth2Client, refreshExecutor);
     }
 
     @Provides
     @Singleton
-    @ForTokenRefresher
+    @ForRefreshTokens
     public Executor getTokenRefresherExecutor()
     {
         return newCachedThreadPool(daemonThreadsNamed("refresh-token-pool-%d"));
