@@ -113,6 +113,16 @@ The following configuration properties are available:
      - The field of the access token used for the Trino user principal. Defaults to ``sub``. Other commonly used fields include ``sAMAccountName``, ``name``, ``upn``, and ``email``.
    * - ``http-server.authentication.oauth2.groups-field``
      - The field of the access token used for Trino groups. The corresponding claim value must be an array.
+   * - ``http-server.authentication.oauth2.refresh-tokens``
+     - Set to true for enabling refresh token flow. Additionally ``offline`` scope should be specified in ``http-server.authentication.oauth2.scopes``.
+   * - ``http-server.authentication.oauth2.refresh-tokens.refresh.timeout``
+     - Time during which expiration will happen. It triggers only after the accessToken has expired and is always rounded to seconds.
+   * - ``http-server.authentication.oauth2.refresh-tokens.access-token.expiration``
+     - Time during which accessToken will be used to identify a user. It needs to be equal or lower than duration of actual accessToken issued by IdP.
+   * - ``http-server.authentication.oauth2.refresh-tokens.access-token.issuer``
+     - Issuer representing this coordinator instance, that will be used in the issued token. Current Trino version will be added to it.
+   * - ``http-server.authentication.oauth2.refresh-tokens.access-token.audience``
+     - Audience representing this coordinator instance, that will be used in issued token.
 
 
 Troubleshooting
