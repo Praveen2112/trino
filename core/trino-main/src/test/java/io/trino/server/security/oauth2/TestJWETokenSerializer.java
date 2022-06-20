@@ -96,7 +96,7 @@ public class TestJWETokenSerializer
                 new Oauth2ClientStub(),
                 "trino_coordinator_test_version",
                 "trino_coordinator",
-                "pub",
+                "sub",
                 clock,
                 accessTokenExpiration,
                 refreshWindow);
