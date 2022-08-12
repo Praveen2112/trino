@@ -19,6 +19,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.trino.plugin.base.authentication.KerberosAuthentication;
+import io.trino.plugin.base.authentication.KerberosConfiguration;
 import io.trino.plugin.hive.ForHdfs;
 import io.trino.plugin.hive.HdfsConfigurationInitializer;
 
@@ -71,7 +72,10 @@ public final class AuthenticationModules
             {
                 String principal = config.getHdfsTrinoPrincipal();
                 String keytabLocation = config.getHdfsTrinoKeytab();
-                return createCachingKerberosHadoopAuthentication(principal, keytabLocation, updater);
+                KerberosConfiguration.Builder builder = new KerberosConfiguration.Builder()
+                        .withKerberosPrincipal(principal)
+                        .withKeytabLocation(keytabLocation);
+                return createCachingKerberosHadoopAuthentication(builder.build(), updater);
             }
         };
     }
@@ -101,14 +105,17 @@ public final class AuthenticationModules
             {
                 String principal = config.getHdfsTrinoPrincipal();
                 String keytabLocation = config.getHdfsTrinoKeytab();
-                return createCachingKerberosHadoopAuthentication(principal, keytabLocation, updater);
+                KerberosConfiguration.Builder builder = new KerberosConfiguration.Builder()
+                        .withKerberosPrincipal(principal)
+                        .withKeytabLocation(keytabLocation);
+                return createCachingKerberosHadoopAuthentication(builder.build(), updater);
             }
         };
     }
 
-    public static HadoopAuthentication createCachingKerberosHadoopAuthentication(String principal, String keytabLocation, HdfsConfigurationInitializer updater)
+    public static HadoopAuthentication createCachingKerberosHadoopAuthentication(KerberosConfiguration kerberosConfiguration, HdfsConfigurationInitializer updater)
     {
-        KerberosAuthentication kerberosAuthentication = new KerberosAuthentication(principal, keytabLocation);
+        KerberosAuthentication kerberosAuthentication = new KerberosAuthentication(kerberosConfiguration);
         KerberosHadoopAuthentication kerberosHadoopAuthentication = createKerberosHadoopAuthentication(kerberosAuthentication, updater);
         return new CachingKerberosHadoopAuthentication(kerberosHadoopAuthentication);
     }
