@@ -226,7 +226,8 @@ public class DefaultJdbcMetadata
                 handle.getLimit(),
                 handle.getColumns(),
                 handle.getOtherReferencedTables(),
-                handle.getNextSyntheticColumnId());
+                handle.getNextSyntheticColumnId(),
+                handle.getAdditionalInformation());
 
         return Optional.of(
                 remainingExpression.isPresent()
@@ -247,7 +248,8 @@ public class DefaultJdbcMetadata
                 OptionalLong.empty(),
                 Optional.of(columns),
                 handle.getAllReferencedTables(),
-                handle.getNextSyntheticColumnId());
+                handle.getNextSyntheticColumnId(),
+                handle.getAdditionalInformation());
     }
 
     @Override
@@ -287,7 +289,8 @@ public class DefaultJdbcMetadata
                         handle.getLimit(),
                         Optional.of(newColumns),
                         handle.getOtherReferencedTables(),
-                        handle.getNextSyntheticColumnId()),
+                        handle.getNextSyntheticColumnId(),
+                        handle.getAdditionalInformation()),
                 projections,
                 assignments.entrySet().stream()
                         .map(assignment -> new Assignment(
@@ -392,7 +395,8 @@ public class DefaultJdbcMetadata
                 OptionalLong.empty(),
                 Optional.of(newColumnsList),
                 handle.getAllReferencedTables(),
-                nextSyntheticColumnId);
+                nextSyntheticColumnId,
+                handle.getAdditionalInformation());
 
         return Optional.of(new AggregationApplicationResult<>(handle, projections.build(), resultAssignments.build(), ImmutableMap.of(), precalculateStatisticsForPushdown));
     }
@@ -478,7 +482,8 @@ public class DefaultJdbcMetadata
                                                 .addAll(leftReferencedTables)
                                                 .addAll(rightReferencedTables)
                                                 .build())),
-                        nextSyntheticColumnId),
+                        nextSyntheticColumnId,
+                        Optional.empty()),
                 ImmutableMap.copyOf(newLeftColumns),
                 ImmutableMap.copyOf(newRightColumns),
                 precalculateStatisticsForPushdown));
@@ -535,7 +540,8 @@ public class DefaultJdbcMetadata
                 OptionalLong.of(limit),
                 handle.getColumns(),
                 handle.getOtherReferencedTables(),
-                handle.getNextSyntheticColumnId());
+                handle.getNextSyntheticColumnId(),
+                handle.getAdditionalInformation());
 
         return Optional.of(new LimitApplicationResult<>(handle, jdbcClient.isLimitGuaranteed(session), precalculateStatisticsForPushdown));
     }
@@ -584,7 +590,8 @@ public class DefaultJdbcMetadata
                 OptionalLong.of(topNCount),
                 handle.getColumns(),
                 handle.getOtherReferencedTables(),
-                handle.getNextSyntheticColumnId());
+                handle.getNextSyntheticColumnId(),
+                handle.getAdditionalInformation());
 
         return Optional.of(new TopNApplicationResult<>(sortedTableHandle, jdbcClient.isTopNGuaranteed(session), precalculateStatisticsForPushdown));
     }
