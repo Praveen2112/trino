@@ -14,6 +14,7 @@
 package io.trino.plugin.hive.orc;
 
 import io.trino.orc.metadata.OrcType.OrcTypeKind;
+<<<<<<< HEAD
 import io.trino.plugin.hive.coercions.BooleanCoercer.BooleanToVarcharCoercer;
 import io.trino.plugin.hive.coercions.BooleanCoercer.OrcVarcharToBooleanCoercer;
 import io.trino.plugin.hive.coercions.DateCoercer.DateToVarcharCoercer;
@@ -21,6 +22,9 @@ import io.trino.plugin.hive.coercions.DateCoercer.VarcharToDateCoercer;
 import io.trino.plugin.hive.coercions.DoubleToVarcharCoercer;
 import io.trino.plugin.hive.coercions.IntegerNumberToDoubleCoercer;
 import io.trino.plugin.hive.coercions.TimestampCoercer.LongTimestampToDateCoercer;
+=======
+import io.trino.plugin.hive.coercions.IntegerNumberToVarcharCoercer;
+>>>>>>> 01f796ff21d (Add support for integer number to varchar coercer in unpartitioned table)
 import io.trino.plugin.hive.coercions.TimestampCoercer.LongTimestampToVarcharCoercer;
 import io.trino.plugin.hive.coercions.TimestampCoercer.VarcharToLongTimestampCoercer;
 import io.trino.plugin.hive.coercions.TimestampCoercer.VarcharToShortTimestampCoercer;
@@ -43,17 +47,24 @@ import io.trino.spi.type.VarcharType;
 
 import java.util.Optional;
 
+<<<<<<< HEAD
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.BOOLEAN;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.BYTE;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.DATE;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.DOUBLE;
+=======
+import static io.trino.orc.metadata.OrcType.OrcTypeKind.BYTE;
+>>>>>>> 01f796ff21d (Add support for integer number to varchar coercer in unpartitioned table)
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.INT;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.LONG;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.SHORT;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.STRING;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.TIMESTAMP;
 import static io.trino.orc.metadata.OrcType.OrcTypeKind.VARCHAR;
+<<<<<<< HEAD
 import static io.trino.plugin.hive.coercions.DecimalCoercers.createIntegerNumberToDecimalCoercer;
+=======
+>>>>>>> 01f796ff21d (Add support for integer number to varchar coercer in unpartitioned table)
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.SmallintType.SMALLINT;
@@ -145,6 +156,15 @@ public final class OrcTypeTranslator
             if (fromOrcType == LONG) {
                 return Optional.of(createIntegerNumberToDecimalCoercer(BIGINT, decimalType));
             }
+        }
+        if ((fromOrcType == BYTE || fromOrcType == SHORT || fromOrcType == INT || fromOrcType == LONG) && toTrinoType instanceof VarcharType varcharType) {
+            Type type = switch (fromOrcType) {
+                case BYTE -> TINYINT;
+                case SHORT -> SMALLINT;
+                case INT -> INTEGER;
+                default -> BIGINT;
+            };
+            return Optional.of(new IntegerNumberToVarcharCoercer<>(type, varcharType));
         }
         return Optional.empty();
     }
