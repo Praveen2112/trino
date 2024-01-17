@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - praveen/test_ci
   pull_request:
     paths-ignore:
       - 'docs/**'
