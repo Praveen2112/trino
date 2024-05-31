@@ -13,7 +13,6 @@
  */
 package io.trino.plugin.pinot;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -190,7 +189,7 @@ public class PinotMetadata
         }
         SchemaTableName tableName = new SchemaTableName(pinotTableHandle.getSchemaName(), pinotTableHandle.getTableName());
 
-        return getTableMetadata(tableName);
+        return new ConnectorTableMetadata(tableName, getColumnsMetadata(tableName.getTableName()));
     }
 
     @Override
@@ -525,8 +524,7 @@ public class PinotMetadata
         return aggregateColumn;
     }
 
-    @VisibleForTesting
-    public List<ColumnMetadata> getColumnsMetadata(String tableName)
+    private List<ColumnMetadata> getColumnsMetadata(String tableName)
     {
         String pinotTableName = pinotClient.getPinotTableNameFromTrinoTableName(tableName);
         return getFromCache(pinotTableColumnCache, pinotTableName).stream()
@@ -556,11 +554,6 @@ public class PinotMetadata
         dynamicTable.aggregateColumns()
                 .forEach(columnHandle -> columnHandlesBuilder.put(columnHandle.getColumnName().toLowerCase(ENGLISH), columnHandle));
         return columnHandlesBuilder.buildOrThrow();
-    }
-
-    private ConnectorTableMetadata getTableMetadata(SchemaTableName tableName)
-    {
-        return new ConnectorTableMetadata(tableName, getColumnsMetadata(tableName.getTableName()));
     }
 
     private List<PinotColumnHandle> getPinotColumnHandlesForPinotSchema(Schema pinotTableSchema)

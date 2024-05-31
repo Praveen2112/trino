@@ -110,15 +110,23 @@ public abstract class BaseTestHiveCoercion
                 "tinyint_to_smallint",
                 "tinyint_to_int",
                 "tinyint_to_bigint",
+                "tinyint_to_string",
+                "tinyint_to_bounded_varchar",
                 "tinyint_to_double",
                 "tinyint_to_shortdecimal",
                 "tinyint_to_longdecimal",
                 "smallint_to_int",
                 "smallint_to_bigint",
+                "smallint_to_string",
+                "smallint_to_bounded_varchar",
                 "smallint_to_double",
                 "smallint_to_shortdecimal",
                 "smallint_to_longdecimal",
                 "int_to_bigint",
+                "int_to_string",
+                "int_to_bounded_varchar",
+                "bigint_to_string",
+                "bigint_to_bounded_varchar",
                 "int_to_double",
                 "int_to_shortdecimal",
                 "int_to_longdecimal",
@@ -229,20 +237,28 @@ public abstract class BaseTestHiveCoercion
                         "  TINYINT '-1', " +
                         "  TINYINT '2', " +
                         "  TINYINT '-3', " +
+                        "  TINYINT '0', " +
+                        "  TINYINT '127', " +
                         "  TINYINT '4', " +
                         "  TINYINT '5', " +
                         "  TINYINT '6', " +
                         "  SMALLINT '100', " +
                         "  SMALLINT '-101', " +
+                        "  SMALLINT '0', " +
+                        "  SMALLINT '32767', " +
                         "  SMALLINT '1024', " +
                         "  SMALLINT '2048', " +
                         "  SMALLINT '4096', " +
                         "  INTEGER '2323', " +
+                        "  INTEGER '0', " +
+                        "  INTEGER '2147483647', " +
                         "  INTEGER '16384', " +
                         "  INTEGER '16385', " +
                         "  INTEGER '16386', " +
                         "  1234567890, " +
                         "  12345, " +
+                        "  0, " +
+                        "  9223372036854775807, " +
                         "  9223372, " +
                         "  9223372036, " +
                         "  REAL '0.5', " +
@@ -320,11 +336,15 @@ public abstract class BaseTestHiveCoercion
                         "  TINYINT '1', " +
                         "  TINYINT '-2', " +
                         "  NULL, " +
+                        "  TINYINT '-128', " +
+                        "  NULL, " +
                         "  TINYINT '-4', " +
                         "  TINYINT '-5', " +
                         "  TINYINT '-6', " +
                         "  SMALLINT '-100', " +
                         "  SMALLINT '101', " +
+                        "  NULL, " +
+                        "  SMALLINT '-32768', " +
                         "  SMALLINT '-1024', " +
                         "  SMALLINT '-2048', " +
                         "  SMALLINT '-4096', " +
@@ -333,7 +353,11 @@ public abstract class BaseTestHiveCoercion
                         "  INTEGER '-16385', " +
                         "  INTEGER '-16386', " +
                         "  -1234567890, " +
+                        "  NULL, " +
+                        "  INTEGER '-2147483648', " +
                         "  -12345, " +
+                        "  NULL, " +
+                        "  -9223372036854775808, " +
                         "  -9223372, " +
                         "  -9223372036, " +
                         "  REAL '-1.5', " +
@@ -504,6 +528,12 @@ public abstract class BaseTestHiveCoercion
                 .put("tinyint_to_bigint", Arrays.asList(
                         -3L,
                         null))
+                .put("tinyint_to_string", ImmutableList.of(
+                        "0",
+                        "127"))
+                .put("tinyint_to_bounded_varchar", Arrays.asList(
+                        null,
+                        "-128"))
                 .put("tinyint_to_double", Arrays.asList(
                         -4D,
                         4D))
@@ -519,6 +549,12 @@ public abstract class BaseTestHiveCoercion
                 .put("smallint_to_bigint", ImmutableList.of(
                         -101L,
                         101L))
+                .put("smallint_to_string", ImmutableList.of(
+                        "0",
+                        "32767"))
+                .put("smallint_to_bounded_varchar", Arrays.asList(
+                        null,
+                        "-32768"))
                 .put("smallint_to_double", ImmutableList.of(
                         -1024D,
                         1024D))
@@ -543,9 +579,18 @@ public abstract class BaseTestHiveCoercion
                 .put("bigint_to_double", ImmutableList.of(
                         -1234567890D,
                         1234567890D))
-                .put("bigint_to_varchar", ImmutableList.of(
-                        "12345",
-                        "-12345"))
+                .put("int_to_string", ImmutableList.of(
+                        "0",
+                        "2147483647"))
+                .put("int_to_bounded_varchar", Arrays.asList(
+                        null,
+                        "-2147483648"))
+                .put("bigint_to_string", ImmutableList.of(
+                        "0",
+                        "9223372036854775807"))
+                .put("bigint_to_bounded_varchar", Arrays.asList(
+                        null,
+                        "-9223372036854775807"))
                 .put("bigint_to_shortdecimal", Arrays.asList(
                         new BigDecimal(-9223372L),
                         new BigDecimal(9223372L)))
@@ -1114,11 +1159,15 @@ public abstract class BaseTestHiveCoercion
                 row("tinyint_to_smallint", "smallint"),
                 row("tinyint_to_int", "integer"),
                 row("tinyint_to_bigint", "bigint"),
+                row("tinyint_to_string", "varchar"),
+                row("tinyint_to_bounded_varchar", "varchar(30)"),
                 row("tinyint_to_double", "double"),
                 row("tinyint_to_shortdecimal", "decimal(10,2)"),
                 row("tinyint_to_longdecimal", "decimal(20,2)"),
                 row("smallint_to_int", "integer"),
                 row("smallint_to_bigint", "bigint"),
+                row("smallint_to_string", "varchar"),
+                row("smallint_to_bounded_varchar", "varchar(30)"),
                 row("smallint_to_double", "double"),
                 row("smallint_to_shortdecimal", "decimal(10,2)"),
                 row("smallint_to_longdecimal", "decimal(20,2)"),
@@ -1127,7 +1176,10 @@ public abstract class BaseTestHiveCoercion
                 row("int_to_shortdecimal", "decimal(10,2)"),
                 row("int_to_longdecimal", "decimal(20,2)"),
                 row("bigint_to_double", "double"),
-                row("bigint_to_varchar", "varchar"),
+                row("int_to_string", "varchar"),
+                row("int_to_bounded_varchar", "varchar(30)"),
+                row("bigint_to_string", "varchar"),
+                row("bigint_to_bounded_varchar", "varchar(30)"),
                 row("bigint_to_shortdecimal", "decimal(10,2)"),
                 row("bigint_to_longdecimal", "decimal(20,2)"),
                 row("float_to_double", "double"),
@@ -1221,11 +1273,15 @@ public abstract class BaseTestHiveCoercion
                 .put("tinyint_to_smallint", SMALLINT)
                 .put("tinyint_to_int", INTEGER)
                 .put("tinyint_to_bigint", BIGINT)
+                .put("tinyint_to_string", VARCHAR)
+                .put("tinyint_to_bounded_varchar", VARCHAR)
                 .put("tinyint_to_double", DOUBLE)
                 .put("tinyint_to_shortdecimal", DECIMAL)
                 .put("tinyint_to_longdecimal", DECIMAL)
                 .put("smallint_to_int", INTEGER)
                 .put("smallint_to_bigint", BIGINT)
+                .put("smallint_to_string", VARCHAR)
+                .put("smallint_to_bounded_varchar", VARCHAR)
                 .put("smallint_to_double", DOUBLE)
                 .put("smallint_to_shortdecimal", DECIMAL)
                 .put("smallint_to_longdecimal", DECIMAL)
@@ -1234,7 +1290,10 @@ public abstract class BaseTestHiveCoercion
                 .put("int_to_shortdecimal", DECIMAL)
                 .put("int_to_longdecimal", DECIMAL)
                 .put("bigint_to_double", DOUBLE)
-                .put("bigint_to_varchar", VARCHAR)
+                .put("int_to_string", VARCHAR)
+                .put("int_to_bounded_varchar", VARCHAR)
+                .put("bigint_to_string", VARCHAR)
+                .put("bigint_to_bounded_varchar", VARCHAR)
                 .put("bigint_to_shortdecimal", DECIMAL)
                 .put("bigint_to_longdecimal", DECIMAL)
                 .put("float_to_double", DOUBLE)
@@ -1328,15 +1387,23 @@ public abstract class BaseTestHiveCoercion
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_smallint tinyint_to_smallint smallint", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_int tinyint_to_int int", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_bigint tinyint_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_string tinyint_to_string string", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_bounded_varchar tinyint_to_bounded_varchar varchar(30)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_double tinyint_to_double double", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_shortdecimal tinyint_to_shortdecimal decimal(10,2)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_longdecimal tinyint_to_longdecimal decimal(20,2)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_int smallint_to_int int", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_bigint smallint_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_string smallint_to_string string", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_bounded_varchar smallint_to_bounded_varchar varchar(30)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_double smallint_to_double double", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_shortdecimal smallint_to_shortdecimal decimal(10,2)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_longdecimal smallint_to_longdecimal decimal(20,2)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_bigint int_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_string int_to_string string", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_bounded_varchar int_to_bounded_varchar varchar(30)", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN bigint_to_string bigint_to_string string", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN bigint_to_bounded_varchar bigint_to_bounded_varchar varchar(30)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_double int_to_double double", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_shortdecimal int_to_shortdecimal decimal(10,2)", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_longdecimal int_to_longdecimal decimal(20,2)", tableName));
