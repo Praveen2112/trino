@@ -230,6 +230,9 @@ public final class CoercionUtils
         if (fromType instanceof DateType && toType instanceof VarcharType toVarcharType) {
             return Optional.of(new DateToVarcharCoercer(toVarcharType));
         }
+        if (fromType == REAL && toType instanceof VarcharType toVarcharType) {
+            return Optional.of(new FloatToVarcharCoercer(toVarcharType, coercionContext.isOrcFile()));
+        }
         if (fromType == DOUBLE && toType instanceof VarcharType toVarcharType) {
             return Optional.of(new DoubleToVarcharCoercer(toVarcharType, coercionContext.isOrcFile()));
         }
