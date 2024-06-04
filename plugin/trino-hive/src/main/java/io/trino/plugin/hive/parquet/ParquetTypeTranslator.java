@@ -13,6 +13,7 @@
  */
 package io.trino.plugin.hive.parquet;
 
+import io.trino.plugin.hive.coercions.DoubleToVarcharCoercer;
 import io.trino.plugin.hive.coercions.IntegerNumberToDoubleCoercer;
 import io.trino.plugin.hive.coercions.IntegerNumberToVarcharCoercer;
 import io.trino.plugin.hive.coercions.TypeCoercer;
@@ -29,6 +30,7 @@ import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.TimestampType.TIMESTAMP_NANOS;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
@@ -57,6 +59,9 @@ public final class ParquetTypeTranslator
                 if (fromParquetType == INT64) {
                     return Optional.of(new IntegerNumberToVarcharCoercer<>(BIGINT, varcharType));
                 }
+            }
+            if (fromParquetType == DOUBLE) {
+                return Optional.of(new DoubleToVarcharCoercer(varcharType, false));
             }
             if (fromParquetType == INT96) {
                 return Optional.of(new LongTimestampToVarcharCoercer(TIMESTAMP_NANOS, varcharType));
