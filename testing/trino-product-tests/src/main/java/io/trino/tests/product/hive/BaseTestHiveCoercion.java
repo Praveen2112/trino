@@ -88,12 +88,9 @@ public abstract class BaseTestHiveCoercion
     {
         String tableName = mutableTableInstanceOf(tableDefinition).getNameInDatabase();
 
-        String floatToDoubleType = tableName.toLowerCase(ENGLISH).contains("parquet") ? "DOUBLE" : "REAL";
-        String floatToDecimalVal = tableName.toLowerCase(ENGLISH).contains("parquet") ? "12345.12345" : "12345.12300";
-        String decimalToFloatVal = tableName.toLowerCase(ENGLISH).contains("parquet") ? "12345.12345" : "12345.124";
         List<Object> booleanToVarcharVal = tableName.toLowerCase(ENGLISH).contains("parquet") && tableName.toLowerCase(ENGLISH).contains("_unpartitioned") ? ImmutableList.of("true", "false") : ImmutableList.of("TRUE", "FALSE");
 
-        insertTableRows(tableName, floatToDoubleType);
+        insertTableRows(tableName);
 
         alterTableColumnTypes(tableName);
         assertProperAlteredTableSchema(tableName);
@@ -197,7 +194,7 @@ public abstract class BaseTestHiveCoercion
                 "varchar_to_timestamp",
                 "id");
 
-        Function<Engine, Map<String, List<Object>>> expected = engine -> expectedValuesForEngineProvider(engine, tableName, decimalToFloatVal, floatToDecimalVal, booleanToVarcharVal);
+        Function<Engine, Map<String, List<Object>>> expected = engine -> expectedValuesForEngineProvider(engine, tableName, booleanToVarcharVal);
 
         // For Trino, remove unsupported columns
         List<String> prestoReadColumns = removeUnsupportedColumnsForTrino(allColumns, tableName);
@@ -218,16 +215,16 @@ public abstract class BaseTestHiveCoercion
         assertNestedSubFields(tableName);
     }
 
-    protected void insertTableRows(String tableName, String floatToDoubleType)
+    protected void insertTableRows(String tableName)
     {
         // Insert all the data with nanoseconds precision
         setHiveTimestampPrecision(NANOSECONDS);
         onTrino().executeQuery(format(
-                "INSERT INTO %1$s VALUES " +
+                "INSERT INTO %s VALUES " +
                         "(" +
                         "  CAST(ROW ('as is', -1, 100, 2323, 12345, 2) AS ROW(keep VARCHAR, ti2si TINYINT, si2int SMALLINT, int2bi INTEGER, bi2vc BIGINT, lower2uppercase BIGINT)), " +
                         "  ARRAY [CAST(ROW (2, -101, 12345, 'removed') AS ROW (ti2int TINYINT, si2bi SMALLINT, bi2vc BIGINT, remove VARCHAR))], " +
-                        "  MAP (ARRAY [TINYINT '2'], ARRAY [CAST(ROW (-3, 2323, REAL '0.5') AS ROW (ti2bi TINYINT, int2bi INTEGER, float2double %2$s))]), " +
+                        "  MAP (ARRAY [TINYINT '2'], ARRAY [CAST(ROW (-3, 2323, REAL '0.5') AS ROW (ti2bi TINYINT, int2bi INTEGER, float2double REAL))]), " +
                         "  TRUE, " +
                         "  'TRUE', " +
                         "  ' ', " +
@@ -278,7 +275,7 @@ public abstract class BaseTestHiveCoercion
                         "  DECIMAL '123', " +
                         "  DECIMAL '123471234567.9989', " +
                         "  DECIMAL '12345678.12', " +
-                        "  %2$s '12345.12345', " +
+                        "  REAL '12345.12345', " +
                         "  DOUBLE '12345.12345', " +
                         "  DECIMAL '12345.12345', " +
                         "  DECIMAL '12345.12345', " +
@@ -325,7 +322,7 @@ public abstract class BaseTestHiveCoercion
                         "(" +
                         "  CAST(ROW (NULL, 1, -100, -2323, -12345, 2) AS ROW(keep VARCHAR, ti2si TINYINT, si2int SMALLINT, int2bi INTEGER, bi2vc BIGINT, lower2uppercase BIGINT)), " +
                         "  ARRAY [CAST(ROW (-2, 101, -12345, NULL) AS ROW (ti2int TINYINT, si2bi SMALLINT, bi2vc BIGINT, remove VARCHAR))], " +
-                        "  MAP (ARRAY [TINYINT '-2'], ARRAY [CAST(ROW (null, -2323, REAL '-1.5') AS ROW (ti2bi TINYINT, int2bi INTEGER, float2double %2$s))]), " +
+                        "  MAP (ARRAY [TINYINT '-2'], ARRAY [CAST(ROW (null, -2323, REAL '-1.5') AS ROW (ti2bi TINYINT, int2bi INTEGER, float2double REAL))]), " +
                         "  FALSE, " +
                         "  'FAlSE', " +
                         "  'oFF', " +
@@ -376,7 +373,7 @@ public abstract class BaseTestHiveCoercion
                         "  DECIMAL '-124', " +
                         "  DECIMAL '-123471234577.9989', " +
                         "  DECIMAL '-12345678.12', " +
-                        "  %2$s '-12345.12345', " +
+                        "  REAL '-12345.12345', " +
                         "  DOUBLE '-12345.12345', " +
                         "  DECIMAL '-12345.12345', " +
                         "  DECIMAL '-12345.12345', " +
@@ -420,12 +417,11 @@ public abstract class BaseTestHiveCoercion
                         "  '1970', " +
                         "  '1970-01-01 00:00:00.123', " +
                         "  1)",
-                tableName,
-                floatToDoubleType));
+                tableName));
         resetHiveTimestampPrecision();
     }
 
-    protected Map<String, List<Object>> expectedValuesForEngineProvider(Engine engine, String tableName, String decimalToFloatVal, String floatToDecimalVal, List<Object> booleanToVarcharVal)
+    protected Map<String, List<Object>> expectedValuesForEngineProvider(Engine engine, String tableName, List<Object> booleanToVarcharVal)
     {
         String hiveValueForCaseChangeField;
         String coercedNaN = "NaN";
@@ -613,11 +609,11 @@ public abstract class BaseTestHiveCoercion
                 .put("longdecimal_to_longdecimal", ImmutableList.of(
                         new BigDecimal("12345678.12345612345600"),
                         new BigDecimal("-12345678.12345612345600")))
-                .put("float_to_decimal", ImmutableList.of(new BigDecimal(floatToDecimalVal), new BigDecimal("-" + floatToDecimalVal)))
+                .put("float_to_decimal", ImmutableList.of(new BigDecimal("12345.12300"), new BigDecimal("-12345.12300")))
                 .put("double_to_decimal", ImmutableList.of(new BigDecimal("12345.12345"), new BigDecimal("-12345.12345")))
                 .put("decimal_to_float", ImmutableList.of(
-                        Float.parseFloat(decimalToFloatVal),
-                        -Float.parseFloat(decimalToFloatVal)))
+                        Float.parseFloat("12345.124"),
+                        -Float.parseFloat("12345.124")))
                 .put("decimal_to_double", ImmutableList.of(
                         12345.12345,
                         -12345.12345))
@@ -1047,7 +1043,7 @@ public abstract class BaseTestHiveCoercion
         }
 
         List<Row> expectedRows = rowsBuilder.build();
-        assertColumnTypes(actual, tableName, engine, columns);
+        assertColumnTypes(actual, engine, columns);
 
         for (int sqlIndex = 1; sqlIndex <= columns.size(); sqlIndex++) {
             String column = columns.get(sqlIndex - 1);
@@ -1075,7 +1071,7 @@ public abstract class BaseTestHiveCoercion
 
     private void assertProperAlteredTableSchema(String tableName)
     {
-        String floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? "double" : "real";
+        String floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? "real" : "real";
 
         assertThat(onTrino().executeQuery("SHOW COLUMNS FROM " + tableName).project(1, 2)).containsExactlyInOrder(
                 // The field lower2uppercase in the row is recorded in upper case in hive, but Trino converts it to lower case
@@ -1180,18 +1176,10 @@ public abstract class BaseTestHiveCoercion
 
     private void assertColumnTypes(
             QueryResult queryResult,
-            String tableName,
             Engine engine,
             List<String> columns)
     {
-        JDBCType floatType;
-        if (engine == Engine.TRINO) {
-            floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? DOUBLE : REAL;
-        }
-        else {
-            floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? DOUBLE : FLOAT;
-        }
-
+        JDBCType floatType = engine == Engine.TRINO ? REAL : FLOAT;
         Map<String, JDBCType> expectedTypes = ImmutableMap.<String, JDBCType>builder()
                 .put("row_to_row", engine == Engine.TRINO ? JAVA_OBJECT : STRUCT)   // row
                 .put("list_to_list", ARRAY) // list
@@ -1305,7 +1293,7 @@ public abstract class BaseTestHiveCoercion
 
     private static void alterTableColumnTypes(String tableName)
     {
-        String floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? "double" : "float";
+        String floatType = tableName.toLowerCase(ENGLISH).contains("parquet") ? "float" : "float";
 
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN row_to_row row_to_row struct<keep:string, ti2si:smallint, si2int:int, int2bi:bigint, bi2vc:string, LOWER2UPPERCASE:bigint>", tableName));
         onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN list_to_list list_to_list array<struct<ti2int:int, si2bi:bigint, bi2vc:string>>", tableName));
