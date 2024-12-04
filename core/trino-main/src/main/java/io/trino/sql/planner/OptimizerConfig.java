@@ -72,7 +72,7 @@ public class OptimizerConfig
     private boolean dictionaryAggregation;
     private MarkDistinctStrategy markDistinctStrategy;
     private DistinctAggregationsStrategy distinctAggregationsStrategy;
-    private boolean preferPartialAggregation = true;
+    private boolean preferPartialAggregation;
     private boolean pushAggregationThroughOuterJoin = true;
     private boolean enableIntermediateAggregations;
     private boolean pushPartialAggregationThroughJoin = true;
