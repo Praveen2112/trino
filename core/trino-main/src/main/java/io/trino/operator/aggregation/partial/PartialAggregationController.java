@@ -64,7 +64,7 @@ public class PartialAggregationController
 
     public synchronized void onFlush(long bytesProcessed, long rowsProcessed, OptionalLong uniqueRowsProduced)
     {
-        /*if (!partialAggregationDisabled && uniqueRowsProduced.isEmpty()) {
+        if (!partialAggregationDisabled && uniqueRowsProduced.isEmpty()) {
             // when PA is re-enabled, ignore stats from disabled flushes
             return;
         }
@@ -83,7 +83,7 @@ public class PartialAggregationController
             totalRowProcessed = 0;
             totalUniqueRowsProduced = 0;
             partialAggregationDisabled = false;
-        }*/
+        }
     }
 
     private boolean shouldDisablePartialAggregation()
