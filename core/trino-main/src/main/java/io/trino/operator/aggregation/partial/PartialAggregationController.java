@@ -59,7 +59,7 @@ public class PartialAggregationController
 
     public boolean isPartialAggregationDisabled()
     {
-        return partialAggregationDisabled;
+        return false;
     }
 
     public synchronized void onFlush(long bytesProcessed, long rowsProcessed, OptionalLong uniqueRowsProduced)
