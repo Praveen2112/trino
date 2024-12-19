@@ -31,6 +31,7 @@ import io.trino.spi.Page;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.Type;
+import io.trino.sql.planner.plan.AggregationNode;
 import jakarta.annotation.Nullable;
 
 import java.util.List;
@@ -55,6 +56,7 @@ public class SkipAggregationBuilder
     @Nullable
     private Page currentPage;
     private final int[] hashChannels;
+    private final boolean useBulkSerialization;
 
     public SkipAggregationBuilder(
             int expectedGroups,
@@ -65,7 +67,8 @@ public class SkipAggregationBuilder
             OperatorContext operatorContext,
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
-            AggregationMetrics aggregationMetrics)
+            AggregationMetrics aggregationMetrics,
+            boolean useBulkSerialization)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -82,6 +85,7 @@ public class SkipAggregationBuilder
         }
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
+        this.useBulkSerialization = useBulkSerialization;
     }
 
     @Override
@@ -150,16 +154,25 @@ public class SkipAggregationBuilder
             groupIds[position] = position;
         }
 
-        // Evaluate each grouped aggregator into its own output block
         for (int i = 0; i < aggregatorFactories.size(); i++) {
             GroupedAggregator groupedAggregator = aggregatorFactories.get(i).createGroupedAggregator(aggregationMetrics);
-            groupedAggregator.processPage(positionCount, groupIds, page);
-            BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
-            for (int position = 0; position < positionCount; position++) {
-                groupedAggregator.evaluate(position, outputBuilder);
+
+            if (useBulkSerialization && groupedAggregator.getStep() == AggregationNode.Step.PARTIAL && groupedAggregator.singleArgument()) {
+                BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
+                groupedAggregator.serializePage(page, outputBuilder);
+                groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
+                outputBlocks[hashChannels.length + i] = outputBuilder.build();
             }
-            groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
-            outputBlocks[hashChannels.length + i] = outputBuilder.build();
+            else {
+                // Evaluate each grouped aggregator into its own output block
+                groupedAggregator.processPage(positionCount, groupIds, page);
+                BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
+                for (int position = 0; position < positionCount; position++) {
+                    groupedAggregator.evaluate(position, outputBuilder);
+                }
+                groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
+                outputBlocks[hashChannels.length + i] = outputBuilder.build();
+            }
         }
 
         return new Page(positionCount, outputBlocks);
