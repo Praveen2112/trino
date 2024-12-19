@@ -404,7 +404,8 @@ public class HashAggregationOperator
                         flatHashStrategyCompiler,
                         aggregationMetrics,
                         hyperLogLog,
-                        step.isInputRaw());
+                        step.isInputRaw(),
+                        true);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.

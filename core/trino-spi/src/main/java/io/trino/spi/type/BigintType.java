@@ -14,6 +14,7 @@
 package io.trino.spi.type;
 
 import io.trino.spi.block.Block;
+import io.trino.spi.block.LongArrayBlock;
 import io.trino.spi.connector.ConnectorSession;
 
 import java.util.Optional;
@@ -33,6 +34,10 @@ public final class BigintType
     @Override
     public Object getObjectValue(ConnectorSession session, Block block, int position)
     {
+        if (!(block instanceof LongArrayBlock)) {
+            System.nanoTime();
+            return null;
+        }
         if (block.isNull(position)) {
             return null;
         }

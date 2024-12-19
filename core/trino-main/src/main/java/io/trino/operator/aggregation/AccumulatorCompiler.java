@@ -211,6 +211,7 @@ public final class AccumulatorCompiler
 
         if (grouped) {
             generateGroupedEvaluateIntermediate(definition, stateFieldAndDescriptors, true);
+            generateSerializePage(definition, argumentNullable, stateFieldAndDescriptors);
         }
         else {
             generateEvaluateIntermediate(definition, stateFieldAndDescriptors, true);
@@ -445,6 +446,30 @@ public final class AccumulatorCompiler
 
         body.append(block);
         body.ret();
+    }
+
+    private static void generateSerializePage(
+            ClassDefinition definition,
+            List<Boolean> argumentNullable,
+            List<StateFieldAndDescriptor> stateFieldAndDescriptors)
+    {
+        Parameter block = arg("block", Block.class);
+        Parameter out = arg("out", BlockBuilder.class);
+        MethodDefinition method = definition.declareMethod(a(PUBLIC), "serializePage", type(void.class), block, out);
+        Scope scope = method.getScope();
+        BytecodeBlock body = method.getBody();
+
+        Variable thisVariable = method.getThis();
+
+        if (stateFieldAndDescriptors.size() == 1) {
+            BytecodeExpression stateSerializer = thisVariable.getField(getOnlyElement(stateFieldAndDescriptors).getStateSerializerField());
+
+            body.append(stateSerializer.invoke("serializeBulk", void.class, block, out))
+                    .ret();
+        }
+        else {
+            throw new RuntimeException();
+        }
     }
 
     private static void generateAddInputWindowIndex(

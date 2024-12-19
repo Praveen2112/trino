@@ -23,6 +23,11 @@ public interface AccumulatorStateSerializer<T extends AccumulatorState>
 
     void serialize(T state, BlockBuilder out);
 
+    default void serializeBulk(Block block, BlockBuilder out)
+    {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Deserialize {@code index}-th position in {@code block} into {@code state}.
      * <p>
