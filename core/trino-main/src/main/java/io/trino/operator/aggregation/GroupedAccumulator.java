@@ -31,5 +31,10 @@ public interface GroupedAccumulator
 
     void evaluateFinal(int groupId, BlockBuilder output);
 
+    default void serializePage(Block block, BlockBuilder output)
+    {
+        throw new UnsupportedOperationException();
+    }
+
     void prepareFinal();
 }

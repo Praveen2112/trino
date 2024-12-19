@@ -403,7 +403,8 @@ public class HashAggregationOperator
                         memoryContext,
                         flatHashStrategyCompiler,
                         aggregationMetrics,
-                        hyperLogLog);
+                        hyperLogLog,
+                        true);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
