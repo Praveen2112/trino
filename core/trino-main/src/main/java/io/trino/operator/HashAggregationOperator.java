@@ -388,7 +388,7 @@ public class HashAggregationOperator
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
             if (step.isOutputPartial() && step == Step.PARTIAL) {
-                aggregationBuilder = new SkipAggregationBuilder(groupByChannels, hashChannel, aggregatorFactories, memoryContext, aggregationMetrics);
+                aggregationBuilder = new SkipAggregationBuilder(groupByChannels, hashChannel, aggregatorFactories, memoryContext, aggregationMetrics, true);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.

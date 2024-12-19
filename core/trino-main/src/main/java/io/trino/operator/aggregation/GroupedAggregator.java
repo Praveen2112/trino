@@ -102,6 +102,11 @@ public class GroupedAggregator
         }
     }
 
+    public void serializePage(Page page, BlockBuilder output)
+    {
+        accumulator.serializePage(page.getBlock(inputChannels[0]), output);
+    }
+
     public void prepareFinal()
     {
         accumulator.prepareFinal();
@@ -126,5 +131,15 @@ public class GroupedAggregator
     public Type getSpillType()
     {
         return intermediateType;
+    }
+
+    public Step getStep()
+    {
+        return step;
+    }
+
+    public boolean singleArgument()
+    {
+        return inputChannels.length == 1;
     }
 }

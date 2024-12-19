@@ -19,6 +19,7 @@ import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.block.VariableWidthBlock;
 import io.trino.spi.function.AccumulatorStateSerializer;
+import io.trino.spi.type.BigintType;
 import io.trino.spi.type.Type;
 
 import static io.trino.spi.type.VarbinaryType.VARBINARY;
@@ -55,6 +56,25 @@ public class LongDecimalWithOverflowStateSerializer
         int decimalsCount = 1 + (high == 0 ? 0 : 1);
         int bufferLength = overflow == 0 ? decimalsCount : 3;
         VARBINARY.writeSlice(out, buffer, 0, bufferLength * Long.BYTES);
+    }
+
+    @Override
+    public void serializeBulk(Block block, BlockBuilder out)
+    {
+        for (int i = 0; i < block.getPositionCount(); i++) {
+            if (block.isNull(i)) {
+                out.appendNull();
+            }
+            else {
+                Slice buffer = Slices.allocate(Long.BYTES);
+                long low = BigintType.BIGINT.getLong(block, i);
+                buffer.setLong(0, low);
+                // if high == 0 and overflow == 0 we only write low (bufferLength = 1)
+                // if high != 0 and overflow == 0 we write both low and high (bufferLength = 2)
+                // if overflow != 0 we write all values (bufferLength = 3)
+                VARBINARY.writeSlice(out, buffer, 0, Long.BYTES);
+            }
+        }
     }
 
     @Override
