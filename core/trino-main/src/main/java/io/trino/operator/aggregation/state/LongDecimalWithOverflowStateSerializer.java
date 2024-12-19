@@ -19,7 +19,6 @@ import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.block.VariableWidthBlock;
 import io.trino.spi.function.AccumulatorStateSerializer;
-import io.trino.spi.type.BigintType;
 import io.trino.spi.type.Type;
 
 import static io.trino.spi.type.VarbinaryType.VARBINARY;
@@ -58,7 +57,7 @@ public class LongDecimalWithOverflowStateSerializer
         VARBINARY.writeSlice(out, buffer, 0, bufferLength * Long.BYTES);
     }
 
-    @Override
+    /*@Override
     public void serializeBulk(Block block, BlockBuilder out)
     {
         for (int i = 0; i < block.getPositionCount(); i++) {
@@ -75,7 +74,7 @@ public class LongDecimalWithOverflowStateSerializer
                 VARBINARY.writeSlice(out, buffer, 0, Long.BYTES);
             }
         }
-    }
+    }*/
 
     @Override
     public void deserialize(Block block, int index, LongDecimalWithOverflowState state)
