@@ -54,7 +54,7 @@ public class TaskManagerConfig
     private boolean perOperatorCpuTimerEnabled = true;
     private boolean taskCpuTimerEnabled = true;
     private boolean statisticsCpuTimerEnabled = true;
-    private DataSize maxPartialAggregationMemoryUsage = DataSize.of(16, Unit.MEGABYTE);
+    private DataSize maxPartialAggregationMemoryUsage = DataSize.of(16, Unit.GIGABYTE);
     private DataSize maxPartialTopNMemory = DataSize.of(16, Unit.MEGABYTE);
     private DataSize maxLocalExchangeBufferSize = DataSize.of(128, Unit.MEGABYTE);
     private DataSize maxIndexMemoryUsage = DataSize.of(64, Unit.MEGABYTE);

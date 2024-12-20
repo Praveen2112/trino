@@ -88,8 +88,7 @@ public class PartialAggregationController
 
     private boolean shouldDisablePartialAggregation()
     {
-        return totalBytesProcessed >= maxPartialMemory.toBytes() * DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR
-                && ((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold;
+        return ((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold;
     }
 
     public PartialAggregationController duplicate()
