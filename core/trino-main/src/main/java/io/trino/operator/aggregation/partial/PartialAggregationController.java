@@ -37,11 +37,11 @@ public class PartialAggregationController
      * Process enough pages to fill up partial-aggregation buffer before
      * considering partial-aggregation to be turned off.
      */
-    private static final double DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR = 1.5;
+    private static final double DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR = 0.1;
     /**
      * Re-enable partial aggregation periodically in case aggregation efficiency improved.
      */
-    private static final double ENABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR = DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR * 20_00;
+    private static final double ENABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR = DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR * 20_00_000;
 
     private final DataSize maxPartialMemory;
     private final double uniqueRowsRatioThreshold;
