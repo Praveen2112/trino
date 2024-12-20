@@ -46,7 +46,7 @@ public class PartialAggregationController
     private final DataSize maxPartialMemory;
     private final double uniqueRowsRatioThreshold;
 
-    private volatile boolean partialAggregationDisabled;
+    private volatile boolean partialAggregationDisabled = true;
     private long totalBytesProcessed;
     private long totalRowProcessed;
     private long totalUniqueRowsProduced;
