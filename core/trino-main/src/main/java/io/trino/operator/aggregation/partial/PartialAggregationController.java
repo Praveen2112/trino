@@ -45,6 +45,8 @@ public class PartialAggregationController
 
     private final DataSize maxPartialMemory;
     private final double uniqueRowsRatioThreshold;
+    private final double enableAggregationBufferSizeThreshold;
+    private final double disableAggregationBufferSizeThreshold;
 
     private volatile boolean partialAggregationDisabled;
     private long totalBytesProcessed;
@@ -55,6 +57,8 @@ public class PartialAggregationController
     {
         this.maxPartialMemory = requireNonNull(maxPartialMemory, "maxPartialMemory is null");
         this.uniqueRowsRatioThreshold = uniqueRowsRatioThreshold;
+        this.enableAggregationBufferSizeThreshold = maxPartialMemory.toBytes() * ENABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR;
+        this.disableAggregationBufferSizeThreshold = maxPartialMemory.toBytes() * DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR;
     }
 
     public boolean isPartialAggregationDisabled()
@@ -78,7 +82,7 @@ public class PartialAggregationController
         }
 
         if (partialAggregationDisabled
-                && totalBytesProcessed >= maxPartialMemory.toBytes() * ENABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR) {
+                && totalBytesProcessed >= enableAggregationBufferSizeThreshold) {
             totalBytesProcessed = 0;
             totalRowProcessed = 0;
             totalUniqueRowsProduced = 0;
@@ -88,7 +92,7 @@ public class PartialAggregationController
 
     private boolean shouldDisablePartialAggregation()
     {
-        return totalBytesProcessed >= maxPartialMemory.toBytes() * DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR
+        return totalBytesProcessed >= disableAggregationBufferSizeThreshold
                 && ((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold;
     }
 
