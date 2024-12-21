@@ -286,7 +286,7 @@ public class HashAggregationOperator
 
     private HashAggregationBuilder aggregationBuilder;
     private final LocalMemoryContext memoryContext;
-    private WorkProcessor<Page> outputPages;
+    private WorkProcessor<HashAggregationBuilder.HashOutput> outputPages;
     private long totalInputRowsProcessed;
     private boolean finishing;
     private boolean finished;
@@ -388,7 +388,16 @@ public class HashAggregationOperator
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
             if (step.isOutputPartial() && partialAggregationDisabled) {
-                aggregationBuilder = new SkipAggregationBuilder(groupByChannels, hashChannel, aggregatorFactories, memoryContext, aggregationMetrics);
+                aggregationBuilder = new SkipAggregationBuilder(
+                        expectedGroups,
+                        groupByTypes,
+                        groupByChannels,
+                        hashChannel,
+                        aggregatorFactories,
+                        operatorContext,
+                        memoryContext,
+                        flatHashStrategyCompiler,
+                        aggregationMetrics);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
@@ -515,8 +524,8 @@ public class HashAggregationOperator
             return null;
         }
 
-        Page result = outputPages.getResult();
-        aggregationUniqueRowsProduced += result.getPositionCount();
+        Page result = outputPages.getResult().page();
+        aggregationUniqueRowsProduced += outputPages.getResult().uniqueRecords();
         return result;
     }
 
@@ -536,7 +545,7 @@ public class HashAggregationOperator
     {
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.empty()));
+            partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));

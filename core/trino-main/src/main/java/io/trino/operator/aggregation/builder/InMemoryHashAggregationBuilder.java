@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
+import io.trino.SystemSessionProperties;
 import io.trino.array.IntBigArray;
 import io.trino.operator.AggregationMetrics;
 import io.trino.operator.FlatHashStrategyCompiler;
@@ -60,6 +61,8 @@ public class InMemoryHashAggregationBuilder
     private final OptionalLong maxPartialMemory;
     private final UpdateMemory updateMemory;
     private final AggregationMetrics aggregationMetrics;
+    private final double uniqueRowsRatioThreshold;
+    private long totalRowProcessed;
 
     private boolean full;
 
@@ -87,7 +90,8 @@ public class InMemoryHashAggregationBuilder
                 Optional.empty(),
                 hashStrategyCompiler,
                 updateMemory,
-                aggregationMetrics);
+                aggregationMetrics,
+                SystemSessionProperties.getAdaptivePartialAggregationUniqueRowsRatioThreshold(operatorContext.getSession()));
     }
 
     public InMemoryHashAggregationBuilder(
@@ -102,7 +106,8 @@ public class InMemoryHashAggregationBuilder
             Optional<Integer> unspillIntermediateChannelOffset,
             FlatHashStrategyCompiler hashStrategyCompiler,
             UpdateMemory updateMemory,
-            AggregationMetrics aggregationMetrics)
+            AggregationMetrics aggregationMetrics,
+            double uniqueRowsRatioThreshold)
     {
         if (hashChannel.isPresent()) {
             this.groupByOutputTypes = ImmutableList.<Type>builderWithExpectedSize(groupByTypes.size() + 1)
@@ -145,6 +150,7 @@ public class InMemoryHashAggregationBuilder
         }
         groupedAggregators = builder.build();
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
+        this.uniqueRowsRatioThreshold = uniqueRowsRatioThreshold;
     }
 
     @Override
@@ -153,6 +159,7 @@ public class InMemoryHashAggregationBuilder
     @Override
     public Work<?> processPage(Page page)
     {
+        totalRowProcessed = totalRowProcessed + page.getPositionCount();
         if (groupedAggregators.isEmpty()) {
             return new MeasuredGroupByHashWork<>(groupByHash.addPage(page.getLoadedPage(groupByChannels)), aggregationMetrics);
         }
@@ -177,7 +184,7 @@ public class InMemoryHashAggregationBuilder
     @Override
     public boolean isFull()
     {
-        return full;
+        return full || partial && ((double) groupByHash.getGroupCount() / totalRowProcessed) > uniqueRowsRatioThreshold;
     }
 
     @Override
@@ -205,7 +212,7 @@ public class InMemoryHashAggregationBuilder
 
     private void updateIsFull(long sizeInMemory)
     {
-        if (!partial || maxPartialMemory.isEmpty()) {
+        if (!partial || maxPartialMemory.isEmpty() || true) {
             return;
         }
 
@@ -239,7 +246,7 @@ public class InMemoryHashAggregationBuilder
     }
 
     @Override
-    public WorkProcessor<Page> buildResult()
+    public WorkProcessor<HashOutput> buildResult()
     {
         for (GroupedAggregator groupedAggregator : groupedAggregators) {
             groupedAggregator.prepareFinal();
@@ -247,7 +254,7 @@ public class InMemoryHashAggregationBuilder
         return buildResult(consecutiveGroupIds());
     }
 
-    public WorkProcessor<Page> buildHashSortedResult()
+    public WorkProcessor<HashOutput> buildHashSortedResult()
     {
         return buildResult(hashSortedGroupIds());
     }
@@ -267,7 +274,7 @@ public class InMemoryHashAggregationBuilder
         return groupByHash.getCapacity();
     }
 
-    private WorkProcessor<Page> buildResult(IntIterator groupIds)
+    private WorkProcessor<HashOutput> buildResult(IntIterator groupIds)
     {
         PageBuilder pageBuilder = new PageBuilder(buildTypes());
         return WorkProcessor.create(() -> {
@@ -290,7 +297,7 @@ public class InMemoryHashAggregationBuilder
                 }
             }
 
-            return ProcessState.ofResult(pageBuilder.build());
+            return ProcessState.ofResult(new HashOutput(pageBuilder.build(), pageBuilder.getPositionCount()));
         });
     }
 

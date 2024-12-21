@@ -23,7 +23,7 @@ public interface HashAggregationBuilder
 {
     Work<?> processPage(Page page);
 
-    WorkProcessor<Page> buildResult();
+    WorkProcessor<HashOutput> buildResult();
 
     boolean isFull();
 
@@ -35,4 +35,6 @@ public interface HashAggregationBuilder
     ListenableFuture<Void> startMemoryRevoke();
 
     void finishMemoryRevoke();
+
+    record HashOutput(Page page, int uniqueRecords) {}
 }

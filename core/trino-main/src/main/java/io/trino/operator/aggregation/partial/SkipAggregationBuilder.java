@@ -18,6 +18,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.AggregationMetrics;
 import io.trino.operator.CompletedWork;
+import io.trino.operator.FlatHashStrategyCompiler;
+import io.trino.operator.GroupByHash;
+import io.trino.operator.OperatorContext;
+import io.trino.operator.UpdateMemory;
 import io.trino.operator.Work;
 import io.trino.operator.WorkProcessor;
 import io.trino.operator.aggregation.AggregatorFactory;
@@ -26,12 +30,14 @@ import io.trino.operator.aggregation.builder.HashAggregationBuilder;
 import io.trino.spi.Page;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.type.Type;
 import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static io.trino.operator.GroupByHash.createGroupByHash;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -43,6 +49,7 @@ public class SkipAggregationBuilder
         implements HashAggregationBuilder
 {
     private final LocalMemoryContext memoryContext;
+    private final GroupByHash groupByHash;
     private final List<AggregatorFactory> aggregatorFactories;
     private final AggregationMetrics aggregationMetrics;
     @Nullable
@@ -50,12 +57,23 @@ public class SkipAggregationBuilder
     private final int[] hashChannels;
 
     public SkipAggregationBuilder(
+            int expectedGroups,
+            List<Type> groupByTypes,
             List<Integer> groupByChannels,
             Optional<Integer> inputHashChannel,
             List<AggregatorFactory> aggregatorFactories,
+            OperatorContext operatorContext,
             LocalMemoryContext memoryContext,
+            FlatHashStrategyCompiler hashStrategyCompiler,
             AggregationMetrics aggregationMetrics)
     {
+        this.groupByHash = createGroupByHash(
+                operatorContext.getSession(),
+                groupByTypes,
+                inputHashChannel.isPresent(),
+                expectedGroups,
+                hashStrategyCompiler,
+                UpdateMemory.NOOP);
         this.memoryContext = requireNonNull(memoryContext, "memoryContext is null");
         this.aggregatorFactories = ImmutableList.copyOf(requireNonNull(aggregatorFactories, "aggregatorFactories is null"));
         this.hashChannels = new int[groupByChannels.size() + (inputHashChannel.isPresent() ? 1 : 0)];
@@ -75,15 +93,17 @@ public class SkipAggregationBuilder
     }
 
     @Override
-    public WorkProcessor<Page> buildResult()
+    public WorkProcessor<HashOutput> buildResult()
     {
         if (currentPage == null) {
             return WorkProcessor.of();
         }
 
         Page result = buildOutputPage(currentPage);
+        groupByHash.addPage(currentPage.getLoadedPage(this.hashChannels)).process();
+        //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
-        return WorkProcessor.of(result);
+        return WorkProcessor.of(new HashOutput(result, groupByHash.getGroupCount()));
     }
 
     @Override
