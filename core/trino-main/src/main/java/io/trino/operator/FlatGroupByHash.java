@@ -202,6 +202,15 @@ public class FlatGroupByHash
         return new FlatGroupByHash(this);
     }
 
+    @Override
+    public long[] getHashes(Page page)
+    {
+        Block[] blocks = getBlocksFromPage(page);
+        long[] hashes = new long[page.getPositionCount()];
+        flatHash.computeHashes(blocks, hashes, 0, page.getPositionCount());
+        return hashes;
+    }
+
     private int putIfAbsent(Block[] blocks, int position)
     {
         return flatHash.putIfAbsent(blocks, position);

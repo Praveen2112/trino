@@ -15,6 +15,7 @@ package io.trino.operator.aggregation.builder;
 
 import com.google.common.collect.ImmutableList;
 import io.airlift.units.DataSize;
+import io.trino.SystemSessionProperties;
 import io.trino.memory.context.AggregatedMemoryContext;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.AggregationMetrics;
@@ -126,7 +127,7 @@ public class MergingHashAggregationBuilder
                 reset = true;
                 // we can produce output after every input page, because input pages do not have
                 // hash values that span multiple pages (guaranteed by MergeHashSort)
-                return TransformationState.ofResult(hashAggregationBuilder.buildResult(), !inputFinished);
+                throw new UnsupportedOperationException();
             }
         });
     }
@@ -157,6 +158,7 @@ public class MergingHashAggregationBuilder
                 hashStrategyCompiler,
                 // TODO: merging should also yield on memory reservations
                 () -> true,
-                aggregationMetrics);
+                aggregationMetrics,
+                SystemSessionProperties.getAdaptivePartialAggregationUniqueRowsRatioThreshold(operatorContext.getSession()));
     }
 }

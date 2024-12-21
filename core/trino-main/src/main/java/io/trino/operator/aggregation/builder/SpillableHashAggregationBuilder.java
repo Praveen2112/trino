@@ -13,7 +13,6 @@
  */
 package io.trino.operator.aggregation.builder;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.io.Closer;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
@@ -42,7 +41,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static io.airlift.concurrent.MoreFutures.getFutureValue;
 import static io.trino.operator.Operator.NOT_BLOCKED;
-import static java.lang.Math.max;
 import static java.util.Objects.requireNonNull;
 
 public class SpillableHashAggregationBuilder
@@ -173,7 +171,7 @@ public class SpillableHashAggregationBuilder
     }
 
     @Override
-    public WorkProcessor<Page> buildResult()
+    public WorkProcessor<HashOutput> buildResult()
     {
         checkState(hasPreviousSpillCompletedSuccessfully(), "Previous spill hasn't yet finished");
         producingOutput = true;
@@ -201,7 +199,7 @@ public class SpillableHashAggregationBuilder
             return mergeFromDiskAndMemory();
         }
         getFutureValue(spillToDisk());
-        return mergeFromDisk();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -236,44 +234,12 @@ public class SpillableHashAggregationBuilder
 
     private ListenableFuture<Void> spillToDisk()
     {
-        checkState(hasPreviousSpillCompletedSuccessfully(), "Previous spill hasn't yet finished");
-        hashAggregationBuilder.setSpillOutput();
-
-        if (spiller.isEmpty()) {
-            spiller = Optional.of(spillerFactory.create(
-                    hashAggregationBuilder.buildTypes(),
-                    operatorContext.getSpillContext(),
-                    operatorContext.newAggregateUserMemoryContext()));
-        }
-
-        // start spilling process with current content of the hashAggregationBuilder builder...
-        spillInProgress = spiller.get().spill(hashAggregationBuilder.buildHashSortedResult().iterator());
-        // ... and immediately create new hashAggregationBuilder so effectively memory ownership
-        // over hashAggregationBuilder is transferred from this thread to a spilling thread
-        rebuildHashAggregationBuilder();
-
-        return spillInProgress;
+        throw new UnsupportedOperationException();
     }
 
-    private WorkProcessor<Page> mergeFromDiskAndMemory()
+    private WorkProcessor<HashOutput> mergeFromDiskAndMemory()
     {
-        checkState(spiller.isPresent());
-
-        hashAggregationBuilder.setSpillOutput();
-        mergeHashSort = Optional.of(new MergeHashSort(operatorContext.newAggregateUserMemoryContext(), typeOperators));
-
-        WorkProcessor<Page> mergedSpilledPages = mergeHashSort.get().merge(
-                groupByTypes,
-                hashAggregationBuilder.buildSpillTypes(),
-                ImmutableList.<WorkProcessor<Page>>builder()
-                        .addAll(spiller.get().getSpills().stream()
-                                .map(WorkProcessor::fromIterator)
-                                .collect(toImmutableList()))
-                        .add(hashAggregationBuilder.buildHashSortedResult())
-                        .build(),
-                operatorContext.getDriverContext().getYieldSignal());
-
-        return mergeSortedPages(mergedSpilledPages, max(memoryLimitForMerge - memoryLimitForMergeWithMemory, 1L));
+        throw new UnsupportedOperationException();
     }
 
     private WorkProcessor<Page> mergeFromDisk()

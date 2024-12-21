@@ -77,4 +77,6 @@ public interface GroupByHash
     int getCapacity();
 
     GroupByHash copy();
+
+    long[] getHashes(Page page);
 }

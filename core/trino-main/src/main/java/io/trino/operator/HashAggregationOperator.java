@@ -16,6 +16,7 @@ package io.trino.operator;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.airlift.units.DataSize;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.aggregation.AggregatorFactory;
@@ -41,6 +42,7 @@ import java.util.OptionalLong;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
+import static io.trino.SystemSessionProperties.getHllBucketCount;
 import static io.trino.SystemSessionProperties.useSkipAggregationForIntermediateAggregation;
 import static io.trino.SystemSessionProperties.useSkipAggregationForPartialAggregation;
 import static io.trino.operator.HashGenerator.INITIAL_HASH_VALUE;
@@ -288,7 +290,7 @@ public class HashAggregationOperator
 
     private HashAggregationBuilder aggregationBuilder;
     private final LocalMemoryContext memoryContext;
-    private WorkProcessor<Page> outputPages;
+    private WorkProcessor<HashAggregationBuilder.HashOutput> outputPages;
     private long totalInputRowsProcessed;
     private boolean finishing;
     private boolean finished;
@@ -298,6 +300,8 @@ public class HashAggregationOperator
     private long aggregationInputBytesProcessed;
     private long aggregationInputRowsProcessed;
     private long aggregationUniqueRowsProduced;
+    private final HyperLogLog hyperLogLog;
+    private long rowsProcessedBySkipAggregationBuilder;
 
     private HashAggregationOperator(
             OperatorContext operatorContext,
@@ -345,6 +349,8 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
+        this.hyperLogLog = HyperLogLog.newInstance(getHllBucketCount(operatorContext.getSession()));
+        hyperLogLog.makeDense();
     }
 
     @Override
@@ -391,7 +397,17 @@ public class HashAggregationOperator
                     .orElse(false);
             if ((step.isOutputPartial() && partialAggregationDisabled) ||
                     ((step == Step.PARTIAL && useSkipAggregationForPartialAggregation(operatorContext.getSession())) || (step == Step.INTERMEDIATE && useSkipAggregationForIntermediateAggregation(operatorContext.getSession())))) {
-                aggregationBuilder = new SkipAggregationBuilder(groupByChannels, hashChannel, aggregatorFactories, memoryContext, aggregationMetrics);
+                aggregationBuilder = new SkipAggregationBuilder(
+                        expectedGroups,
+                        groupByTypes,
+                        groupByChannels,
+                        hashChannel,
+                        aggregatorFactories,
+                        operatorContext,
+                        memoryContext,
+                        flatHashStrategyCompiler,
+                        aggregationMetrics,
+                        hyperLogLog);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
@@ -518,8 +534,8 @@ public class HashAggregationOperator
             return null;
         }
 
-        Page result = outputPages.getResult();
-        aggregationUniqueRowsProduced += result.getPositionCount();
+        Page result = outputPages.getResult().page();
+        aggregationUniqueRowsProduced += outputPages.getResult().uniqueRecords();
         return result;
     }
 
@@ -538,8 +554,9 @@ public class HashAggregationOperator
     private void closeAggregationBuilder()
     {
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
+            rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.empty()));
+            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));
