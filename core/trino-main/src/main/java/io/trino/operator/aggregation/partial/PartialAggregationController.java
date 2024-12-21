@@ -47,6 +47,7 @@ public class PartialAggregationController
     private final double uniqueRowsRatioThreshold;
 
     private volatile boolean partialAggregationDisabled;
+    private volatile double uniqueRowsRatio;
     private long totalBytesProcessed;
     private long totalRowProcessed;
     private long totalUniqueRowsProduced;
@@ -59,37 +60,25 @@ public class PartialAggregationController
 
     public boolean isPartialAggregationDisabled()
     {
-        return partialAggregationDisabled;
+        return uniqueRowsRatio == 0.0 || Double.isNaN(uniqueRowsRatio) || shouldDisablePartialAggregation();
     }
 
     public synchronized void onFlush(long bytesProcessed, long rowsProcessed, OptionalLong uniqueRowsProduced)
     {
-        if (!partialAggregationDisabled && uniqueRowsProduced.isEmpty()) {
-            // when PA is re-enabled, ignore stats from disabled flushes
-            return;
-        }
-
         totalBytesProcessed += bytesProcessed;
         totalRowProcessed += rowsProcessed;
         uniqueRowsProduced.ifPresent(value -> totalUniqueRowsProduced += value);
+        uniqueRowsRatio = (double) totalUniqueRowsProduced / totalRowProcessed;
+    }
 
-        if (!partialAggregationDisabled && shouldDisablePartialAggregation()) {
-            partialAggregationDisabled = true;
-        }
-
-        if (partialAggregationDisabled
-                && totalBytesProcessed >= maxPartialMemory.toBytes() * ENABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR) {
-            totalBytesProcessed = 0;
-            totalRowProcessed = 0;
-            totalUniqueRowsProduced = 0;
-            partialAggregationDisabled = false;
-        }
+    public synchronized void setUniqueRowsRatioThreshold(double uniqueRowsRatio)
+    {
+        this.uniqueRowsRatio = uniqueRowsRatio;
     }
 
     private boolean shouldDisablePartialAggregation()
     {
-        return totalBytesProcessed >= maxPartialMemory.toBytes() * DISABLE_AGGREGATION_BUFFER_SIZE_TO_INPUT_BYTES_FACTOR
-                && ((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold;
+        return uniqueRowsRatio > uniqueRowsRatioThreshold;
     }
 
     public PartialAggregationController duplicate()

@@ -75,4 +75,6 @@ public interface GroupByHash
 
     @VisibleForTesting
     int getCapacity();
+
+    long[] getHashes(Page page);
 }

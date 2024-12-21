@@ -70,6 +70,12 @@ public class NoChannelGroupByHash
         return 2;
     }
 
+    @Override
+    public long[] getHashes(Page page)
+    {
+        return new long[page.getPositionCount()];
+    }
+
     private void updateGroupCount(Page page)
     {
         if (page.getPositionCount() > 0 && groupCount == 0) {

@@ -221,6 +221,7 @@ public final class SystemSessionProperties
     public static final String COLUMNAR_FILTER_EVALUATION_ENABLED = "columnar_filter_evaluation_enabled";
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION = "use_skip_aggregation_builder_for_partial_aggregation";
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION = "use_skip_aggregation_builder_for_intermediate_aggregation";
+    public static final String HLL_BUCKET_SIZE = "hll_bucket_size";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -1140,7 +1141,12 @@ public final class SystemSessionProperties
                         USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION,
                         "Use skip aggregation builder for intermediate aggregation",
                         false,
-                        false));
+                        false),
+                integerProperty(
+                        HLL_BUCKET_SIZE,
+                        "Hyperloglog bucket size",
+                        8192,
+                        true));
     }
 
     @Override
@@ -2043,5 +2049,10 @@ public final class SystemSessionProperties
     public static boolean useSkipAggregationForIntermediateAggregation(Session session)
     {
         return session.getSystemProperty(USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION, Boolean.class);
+    }
+
+    public static int getHllBucketCount(Session session)
+    {
+        return session.getSystemProperty(HLL_BUCKET_SIZE, Integer.class);
     }
 }

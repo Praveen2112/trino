@@ -175,6 +175,17 @@ public class BigintGroupByHash
         return hashCapacity;
     }
 
+    @Override
+    public long[] getHashes(Page page)
+    {
+        Block block = page.getBlock(0);
+        long[] hashes = new long[block.getPositionCount()];
+        for (int i = 0; i < block.getPositionCount(); i++) {
+            hashes[i] = BIGINT.getLong(block, i);
+        }
+        return hashes;
+    }
+
     private int putIfAbsent(int position, Block block)
     {
         if (block.isNull(position)) {

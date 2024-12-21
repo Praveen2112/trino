@@ -29,6 +29,8 @@ public class CyclingGroupByHash
     private final int totalGroupCount;
     private int maxGroupId;
     private int currentGroupId;
+    private long currentHash;
+    private long maxCurrentHash;
 
     public CyclingGroupByHash(int totalGroupCount)
     {
@@ -81,5 +83,17 @@ public class CyclingGroupByHash
     public int getCapacity()
     {
         return totalGroupCount;
+    }
+
+    @Override
+    public long[] getHashes(Page page)
+    {
+        long[] hashes = new long[page.getPositionCount()];
+        for (int i = 0; i < page.getPositionCount(); i++) {
+            hashes[i] = currentHash;
+            maxCurrentHash = Math.max(currentHash, maxCurrentHash);
+            currentHash = (currentHash + 1) % totalGroupCount;
+        }
+        return hashes;
     }
 }
