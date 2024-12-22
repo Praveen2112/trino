@@ -15,6 +15,7 @@ package io.trino.operator;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Shorts;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.trino.spi.Page;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.block.Block;
@@ -140,6 +141,21 @@ public class FlatGroupByHash
         }
 
         return new AddNonDictionaryPageWork(blocks);
+    }
+
+    @Override
+    public long getApproximateDistinctValue(Page page)
+    {
+        HyperLogLog hyperLogLog = HyperLogLog.newInstance(128);
+        Block[] blocks = getBlocksFromPage(page);
+
+        long[] hashes = new long[blocks[0].getPositionCount()];
+        flatHash.computeHashes(blocks, hashes, 0, blocks[0].getPositionCount());
+
+        for (long hash : hashes) {
+            hyperLogLog.add(hash);
+        }
+        return hyperLogLog.cardinality();
     }
 
     @Override

@@ -36,5 +36,5 @@ public interface HashAggregationBuilder
 
     void finishMemoryRevoke();
 
-    record HashOutput(Page page, int uniqueRecords) {}
+    record HashOutput(Page page, long uniqueRecords) {}
 }

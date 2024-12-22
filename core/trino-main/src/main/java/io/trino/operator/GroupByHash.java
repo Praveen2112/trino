@@ -75,4 +75,9 @@ public interface GroupByHash
 
     @VisibleForTesting
     int getCapacity();
+
+    default long getApproximateDistinctValue(Page page)
+    {
+        throw new UnsupportedOperationException();
+    }
 }

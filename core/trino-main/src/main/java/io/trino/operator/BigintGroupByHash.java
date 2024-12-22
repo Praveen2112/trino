@@ -14,6 +14,7 @@
 package io.trino.operator;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.trino.spi.Page;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.TrinoException;
@@ -145,6 +146,17 @@ public class BigintGroupByHash
         }
 
         return new AddPageWork(block);
+    }
+
+    @Override
+    public long getApproximateDistinctValue(Page page)
+    {
+        HyperLogLog hyperLogLog = HyperLogLog.newInstance(10);
+        Block block = page.getBlock(0);
+        for (int i = 0; i < block.getPositionCount(); i++) {
+            hyperLogLog.add(BIGINT.getLong(block, i));
+        }
+        return hyperLogLog.cardinality();
     }
 
     @Override
@@ -496,6 +508,53 @@ public class BigintGroupByHash
             checkState(!finished, "result has produced");
             finished = true;
             return groupIds;
+        }
+    }
+
+    class GetApproximateDistinctWork
+            implements Work<Long>
+    {
+        private final Block block;
+
+        private boolean finished;
+        private int lastPosition;
+        private final HyperLogLog hyperLogLog;
+
+        public GetApproximateDistinctWork(Block block)
+        {
+            this.hyperLogLog = HyperLogLog.newInstance(128);
+            this.block = requireNonNull(block, "block is null");
+        }
+
+        @Override
+        public boolean process()
+        {
+            int positionCount = block.getPositionCount();
+            checkState(lastPosition <= positionCount, "position count out of bound");
+            checkState(!finished);
+
+            int remainingPositions = positionCount - lastPosition;
+
+            while (remainingPositions != 0) {
+                int batchSize = min(remainingPositions, BATCH_SIZE);
+                for (int i = lastPosition; i < lastPosition + batchSize; i++) {
+                    hyperLogLog.add(BIGINT.getLong(block, i));
+                }
+
+                lastPosition += batchSize;
+                remainingPositions -= batchSize;
+            }
+            verify(lastPosition == positionCount);
+            return true;
+        }
+
+        @Override
+        public Long getResult()
+        {
+            checkState(lastPosition == block.getPositionCount(), "process has not yet finished");
+            checkState(!finished, "result has produced");
+            finished = true;
+            return hyperLogLog.cardinality();
         }
     }
 

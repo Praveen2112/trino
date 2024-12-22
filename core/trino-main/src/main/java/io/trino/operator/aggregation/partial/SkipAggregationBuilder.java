@@ -100,10 +100,10 @@ public class SkipAggregationBuilder
         }
 
         Page result = buildOutputPage(currentPage);
-        groupByHash.addPage(currentPage.getLoadedPage(this.hashChannels)).process();
+        long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
-        return WorkProcessor.of(new HashOutput(result, groupByHash.getGroupCount()));
+        return WorkProcessor.of(new HashOutput(result, uniqueValueCount));
     }
 
     @Override
