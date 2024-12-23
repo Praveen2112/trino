@@ -67,8 +67,7 @@ public class SkipAggregationBuilder
             OperatorContext operatorContext,
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
-            AggregationMetrics aggregationMetrics,
-            HyperLogLog hyperLogLog)
+            AggregationMetrics aggregationMetrics)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -85,7 +84,7 @@ public class SkipAggregationBuilder
         }
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
-        this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
+        this.hyperLogLog = HyperLogLog.newInstance(65536);
     }
 
     @Override
@@ -168,5 +167,10 @@ public class SkipAggregationBuilder
         }
 
         return new Page(positionCount, outputBlocks);
+    }
+
+    public HyperLogLog getHyperLogLog()
+    {
+        return hyperLogLog;
     }
 }

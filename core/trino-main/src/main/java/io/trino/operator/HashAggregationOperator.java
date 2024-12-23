@@ -402,8 +402,7 @@ public class HashAggregationOperator
                         operatorContext,
                         memoryContext,
                         flatHashStrategyCompiler,
-                        aggregationMetrics,
-                        hyperLogLog);
+                        aggregationMetrics);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
@@ -549,10 +548,10 @@ public class HashAggregationOperator
 
     private void closeAggregationBuilder()
     {
-        if (aggregationBuilder instanceof SkipAggregationBuilder) {
+        if (aggregationBuilder instanceof SkipAggregationBuilder skipAggregationBuilder) {
             rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
+            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) skipAggregationBuilder.getHyperLogLog().cardinality() / aggregationInputRowsProcessed));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));
