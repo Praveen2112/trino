@@ -71,7 +71,7 @@ public class PartialAggregationController
 
     private boolean shouldDisablePartialAggregation()
     {
-        return ((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold;
+        return totalUniqueRowsProduced == 0 || (((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold);
     }
 
     public PartialAggregationController duplicate()
