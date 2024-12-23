@@ -15,6 +15,7 @@ package io.trino.operator.aggregation.partial;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.AggregationMetrics;
 import io.trino.operator.CompletedWork;
@@ -55,6 +56,7 @@ public class SkipAggregationBuilder
     @Nullable
     private Page currentPage;
     private final int[] hashChannels;
+    private final HyperLogLog hyperLogLog;
 
     public SkipAggregationBuilder(
             int expectedGroups,
@@ -65,7 +67,8 @@ public class SkipAggregationBuilder
             OperatorContext operatorContext,
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
-            AggregationMetrics aggregationMetrics)
+            AggregationMetrics aggregationMetrics,
+            HyperLogLog hyperLogLog)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -82,6 +85,7 @@ public class SkipAggregationBuilder
         }
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
+        this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
     }
 
     @Override
@@ -100,10 +104,11 @@ public class SkipAggregationBuilder
         }
 
         Page result = buildOutputPage(currentPage);
-        long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
+        //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
+        groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
-        return WorkProcessor.of(new HashOutput(result, uniqueValueCount));
+        return WorkProcessor.of(new HashOutput(result, result.getPositionCount()));
     }
 
     @Override

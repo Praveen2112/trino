@@ -160,6 +160,15 @@ public class BigintGroupByHash
     }
 
     @Override
+    public void populateHash(Page page, HyperLogLog hyperLogLog)
+    {
+        Block block = page.getBlock(0);
+        for (int i = 0; i < block.getPositionCount(); i++) {
+            hyperLogLog.addHash(BIGINT.getLong(block, i));
+        }
+    }
+
+    @Override
     public Work<int[]> getGroupIds(Page page)
     {
         currentPageSizeInBytes = page.getRetainedSizeInBytes();

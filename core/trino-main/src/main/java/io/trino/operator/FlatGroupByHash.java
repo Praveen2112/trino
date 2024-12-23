@@ -159,6 +159,17 @@ public class FlatGroupByHash
     }
 
     @Override
+    public void populateHash(Page page, HyperLogLog hyperLogLog)
+    {
+        Block[] blocks = getBlocksFromPage(page);
+        long[] hashes = new long[blocks[0].getPositionCount()];
+        flatHash.computeHashes(blocks, hashes, 0, blocks[0].getPositionCount());
+        for (long hash : hashes) {
+            hyperLogLog.addHash(hash);
+        }
+    }
+
+    @Override
     public Work<int[]> getGroupIds(Page page)
     {
         if (page.getPositionCount() == 0) {

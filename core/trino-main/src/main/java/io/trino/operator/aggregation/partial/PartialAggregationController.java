@@ -47,6 +47,7 @@ public class PartialAggregationController
     private final double uniqueRowsRatioThreshold;
 
     private volatile boolean partialAggregationDisabled;
+    private volatile double uniqueRowsRatio;
     private long totalBytesProcessed;
     private long totalRowProcessed;
     private long totalUniqueRowsProduced;
@@ -67,11 +68,17 @@ public class PartialAggregationController
         totalBytesProcessed += bytesProcessed;
         totalRowProcessed += rowsProcessed;
         uniqueRowsProduced.ifPresent(value -> totalUniqueRowsProduced += value);
+        uniqueRowsRatio = (double) totalUniqueRowsProduced / totalRowProcessed;
+    }
+
+    public synchronized void setUniqueRowsRatioThreshold(double uniqueRowsRatio)
+    {
+        this.uniqueRowsRatio = uniqueRowsRatio;
     }
 
     private boolean shouldDisablePartialAggregation()
     {
-        return totalUniqueRowsProduced == 0 || (((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold);
+        return (((double) totalUniqueRowsProduced / totalRowProcessed) > uniqueRowsRatioThreshold);
     }
 
     public PartialAggregationController duplicate()
