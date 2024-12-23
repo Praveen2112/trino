@@ -14,6 +14,7 @@
 package io.trino.operator;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.trino.Session;
 import io.trino.annotation.NotThreadSafe;
 import io.trino.spi.Page;
@@ -77,6 +78,11 @@ public interface GroupByHash
     int getCapacity();
 
     default long getApproximateDistinctValue(Page page)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    default void populateHyperloglog(Page page, HyperLogLog hyperLogLog)
     {
         throw new UnsupportedOperationException();
     }

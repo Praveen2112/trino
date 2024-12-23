@@ -15,6 +15,7 @@ package io.trino.operator.aggregation.partial;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.stats.cardinality.HyperLogLog;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.AggregationMetrics;
 import io.trino.operator.CompletedWork;
@@ -100,10 +101,11 @@ public class SkipAggregationBuilder
         }
 
         Page result = buildOutputPage(currentPage);
-        long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
+        HyperLogLog hyperLogLog = HyperLogLog.newInstance(65536);
+        groupByHash.populateHyperloglog(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
-        return WorkProcessor.of(new HashOutput(result, uniqueValueCount));
+        return WorkProcessor.of(new HashOutput(result, hyperLogLog.cardinality()));
     }
 
     @Override
