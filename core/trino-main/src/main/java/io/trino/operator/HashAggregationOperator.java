@@ -297,7 +297,7 @@ public class HashAggregationOperator
     private long aggregationInputBytesProcessed;
     private long aggregationInputRowsProcessed;
     private long aggregationUniqueRowsProduced;
-    private HyperLogLog hyperLogLog;
+    private final HyperLogLog hyperLogLog;
     private long rowsProcessedBySkipAggregationBuilder;
 
     private HashAggregationOperator(
