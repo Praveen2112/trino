@@ -387,7 +387,7 @@ public class HashAggregationOperator
             boolean partialAggregationDisabled = partialAggregationController
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
-            if (step.isOutputPartial() && partialAggregationDisabled) {
+            if (step.isOutputPartial() && step == Step.PARTIAL) {
                 aggregationBuilder = new SkipAggregationBuilder(groupByChannels, hashChannel, aggregatorFactories, memoryContext, aggregationMetrics);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
