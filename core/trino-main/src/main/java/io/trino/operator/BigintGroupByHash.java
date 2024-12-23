@@ -522,7 +522,7 @@ public class BigintGroupByHash
 
         public GetApproximateDistinctWork(Block block)
         {
-            this.hyperLogLog = HyperLogLog.newInstance(128);
+            this.hyperLogLog = HyperLogLog.newInstance(65536);
             this.block = requireNonNull(block, "block is null");
         }
 

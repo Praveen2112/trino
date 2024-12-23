@@ -146,7 +146,7 @@ public class FlatGroupByHash
     @Override
     public long getApproximateDistinctValue(Page page)
     {
-        HyperLogLog hyperLogLog = HyperLogLog.newInstance(128);
+        HyperLogLog hyperLogLog = HyperLogLog.newInstance(65536);
         Block[] blocks = getBlocksFromPage(page);
 
         long[] hashes = new long[blocks[0].getPositionCount()];
