@@ -101,7 +101,7 @@ public class SkipAggregationBuilder
         }
 
         Page result = buildOutputPage(currentPage);
-        HyperLogLog hyperLogLog = HyperLogLog.newInstance(65536);
+        HyperLogLog hyperLogLog = HyperLogLog.newInstance(128);
         groupByHash.populateHyperloglog(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
