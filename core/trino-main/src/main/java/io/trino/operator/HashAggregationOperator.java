@@ -346,7 +346,7 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
-        this.hyperLogLog = HyperLogLog.newInstance(65536);
+        this.hyperLogLog = HyperLogLog.newInstance(128);
         hyperLogLog.makeDense();
     }
 
@@ -402,7 +402,8 @@ public class HashAggregationOperator
                         operatorContext,
                         memoryContext,
                         flatHashStrategyCompiler,
-                        aggregationMetrics);
+                        aggregationMetrics,
+                        hyperLogLog);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
