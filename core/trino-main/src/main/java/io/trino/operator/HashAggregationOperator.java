@@ -346,7 +346,7 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
-        this.hyperLogLog = HyperLogLog.newInstance(4096);
+        this.hyperLogLog = HyperLogLog.newInstance(128);
         hyperLogLog.makeDense();
     }
 
