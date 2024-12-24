@@ -153,7 +153,7 @@ public class FlatGroupByHash
         flatHash.computeHashes(blocks, hashes, 0, blocks[0].getPositionCount());
 
         for (long hash : hashes) {
-            hyperLogLog.add(hash);
+            hyperLogLog.addHash(hash);
         }
         return hyperLogLog.cardinality();
     }
