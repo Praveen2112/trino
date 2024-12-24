@@ -184,7 +184,7 @@ public class InMemoryHashAggregationBuilder
     @Override
     public boolean isFull()
     {
-        return full || partial && ((double) groupByHash.getGroupCount() / totalRowProcessed) > uniqueRowsRatioThreshold;
+        return full;
     }
 
     @Override
@@ -212,7 +212,7 @@ public class InMemoryHashAggregationBuilder
 
     private void updateIsFull(long sizeInMemory)
     {
-        if (!partial || maxPartialMemory.isEmpty() || true) {
+        if (!partial || maxPartialMemory.isEmpty()) {
             return;
         }
 
