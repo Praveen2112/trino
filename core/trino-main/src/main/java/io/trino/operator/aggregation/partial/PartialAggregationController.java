@@ -60,7 +60,7 @@ public class PartialAggregationController
 
     public boolean isPartialAggregationDisabled()
     {
-        return uniqueRowsRatio == 0 || shouldDisablePartialAggregation();
+        return uniqueRowsRatio == 0.0 || Double.isNaN(uniqueRowsRatio) || shouldDisablePartialAggregation();
     }
 
     public synchronized void onFlush(long bytesProcessed, long rowsProcessed, OptionalLong uniqueRowsProduced)
