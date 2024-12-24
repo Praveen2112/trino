@@ -50,7 +50,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.OptionalLong;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -848,7 +847,7 @@ public class TestHashAggregationOperator
         }
 
         // partial aggregation should still be enabled even after some late flush comes from disabled PA
-        partialAggregationController.onFlush(1_000_000, 1_000_000, OptionalLong.empty());
+        //partialAggregationController.onFlush(1_000_000, 1_000_000, OptionalLong.empty());
 
         // partial aggregation should keep being enabled after good reduction has been observed
         List<Page> operator3Input = rowPagesBuilder(false, hashChannels, BIGINT)

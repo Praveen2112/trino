@@ -37,7 +37,6 @@ import io.trino.sql.planner.plan.PlanNodeId;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalLong;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -392,6 +391,7 @@ public class HashAggregationOperator
             boolean partialAggregationDisabled = partialAggregationController
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
+            System.out.println("Step " + step + " " + partialAggregationDisabled);
             if (step.isOutputPartial() && partialAggregationDisabled) {
                 aggregationBuilder = new SkipAggregationBuilder(
                         expectedGroups,
@@ -552,10 +552,10 @@ public class HashAggregationOperator
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
             rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
+            partialAggregationController.ifPresent(controller -> controller.onFlush((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
         }
         else {
-            partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));
+            partialAggregationController.ifPresent(controller -> controller.onFlush((double) aggregationUniqueRowsProduced / aggregationInputRowsProcessed));
         }
         aggregationInputBytesProcessed = 0;
         aggregationInputRowsProcessed = 0;

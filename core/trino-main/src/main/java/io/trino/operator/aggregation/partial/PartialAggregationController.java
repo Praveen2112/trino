@@ -13,10 +13,9 @@
  */
 package io.trino.operator.aggregation.partial;
 
+import io.airlift.stats.TDigest;
 import io.airlift.units.DataSize;
 import io.trino.operator.HashAggregationOperator;
-
-import java.util.OptionalLong;
 
 import static java.util.Objects.requireNonNull;
 
@@ -51,34 +50,23 @@ public class PartialAggregationController
     private long totalBytesProcessed;
     private long totalRowProcessed;
     private long totalUniqueRowsProduced;
+    private final TDigest uniqueRowsRatioTDigest;
 
     public PartialAggregationController(DataSize maxPartialMemory, double uniqueRowsRatioThreshold)
     {
         this.maxPartialMemory = requireNonNull(maxPartialMemory, "maxPartialMemory is null");
         this.uniqueRowsRatioThreshold = uniqueRowsRatioThreshold;
+        this.uniqueRowsRatioTDigest = new TDigest();
     }
 
     public boolean isPartialAggregationDisabled()
     {
-        return uniqueRowsRatio == 0.0 || Double.isNaN(uniqueRowsRatio) || shouldDisablePartialAggregation();
+        return Double.isNaN(uniqueRowsRatio) || uniqueRowsRatio > uniqueRowsRatioThreshold;
     }
 
-    public synchronized void onFlush(long bytesProcessed, long rowsProcessed, OptionalLong uniqueRowsProduced)
-    {
-        totalBytesProcessed += bytesProcessed;
-        totalRowProcessed += rowsProcessed;
-        uniqueRowsProduced.ifPresent(value -> totalUniqueRowsProduced += value);
-        uniqueRowsRatio = (double) totalUniqueRowsProduced / totalRowProcessed;
-    }
-
-    public synchronized void setUniqueRowsRatioThreshold(double uniqueRowsRatio)
+    public synchronized void onFlush(double uniqueRowsRatio)
     {
         this.uniqueRowsRatio = uniqueRowsRatio;
-    }
-
-    private boolean shouldDisablePartialAggregation()
-    {
-        return uniqueRowsRatio > uniqueRowsRatioThreshold;
     }
 
     public PartialAggregationController duplicate()
