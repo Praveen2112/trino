@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.stats.cardinality.HyperLogLog;
 import io.airlift.units.DataSize;
+import io.trino.SystemSessionProperties;
 import io.trino.memory.context.LocalMemoryContext;
 import io.trino.operator.aggregation.AggregatorFactory;
 import io.trino.operator.aggregation.builder.HashAggregationBuilder;
@@ -346,7 +347,7 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
-        this.hyperLogLog = HyperLogLog.newInstance(4096);
+        this.hyperLogLog = HyperLogLog.newInstance(SystemSessionProperties.getBucketCount(operatorContext.getSession()));
         hyperLogLog.makeDense();
     }
 
