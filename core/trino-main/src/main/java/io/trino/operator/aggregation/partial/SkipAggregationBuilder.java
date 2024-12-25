@@ -57,6 +57,7 @@ public class SkipAggregationBuilder
     private Page currentPage;
     private final int[] hashChannels;
     private final HyperLogLog hyperLogLog;
+    private final boolean inputRaw;
 
     public SkipAggregationBuilder(
             int expectedGroups,
@@ -68,7 +69,8 @@ public class SkipAggregationBuilder
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
             AggregationMetrics aggregationMetrics,
-            HyperLogLog hyperLogLog)
+            HyperLogLog hyperLogLog,
+            boolean inputRaw)
     {
         this.groupByHash = createGroupByHash(
                 operatorContext.getSession(),
@@ -86,6 +88,7 @@ public class SkipAggregationBuilder
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
         this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
+        this.inputRaw = inputRaw;
     }
 
     @Override
@@ -148,23 +151,31 @@ public class SkipAggregationBuilder
             outputBlocks[i] = page.getBlock(hashChannels[i]);
         }
 
-        // Create a unique groupId mapping per row
         int positionCount = page.getPositionCount();
-        int[] groupIds = new int[positionCount];
-        for (int position = 0; position < positionCount; position++) {
-            groupIds[position] = position;
-        }
 
-        // Evaluate each grouped aggregator into its own output block
-        for (int i = 0; i < aggregatorFactories.size(); i++) {
-            GroupedAggregator groupedAggregator = aggregatorFactories.get(i).createGroupedAggregator(aggregationMetrics);
-            groupedAggregator.processPage(positionCount, groupIds, page);
-            BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
-            for (int position = 0; position < positionCount; position++) {
-                groupedAggregator.evaluate(position, outputBuilder);
+        if (!inputRaw) {
+            for (int i = 0; i < aggregatorFactories.size(); i++) {
+                GroupedAggregator groupedAggregator = aggregatorFactories.get(i).createGroupedAggregator(aggregationMetrics);
+                outputBlocks[hashChannels.length + i] = groupedAggregator.getIntermediateBlock(page);
             }
-            groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
-            outputBlocks[hashChannels.length + i] = outputBuilder.build();
+        }
+        else {
+            // Create a unique groupId mapping per row
+            int[] groupIds = new int[positionCount];
+            for (int position = 0; position < positionCount; position++) {
+                groupIds[position] = position;
+            }
+            // Evaluate each grouped aggregator into its own output block
+            for (int i = 0; i < aggregatorFactories.size(); i++) {
+                GroupedAggregator groupedAggregator = aggregatorFactories.get(i).createGroupedAggregator(aggregationMetrics);
+                groupedAggregator.processPage(positionCount, groupIds, page);
+                BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
+                for (int position = 0; position < positionCount; position++) {
+                    groupedAggregator.evaluate(position, outputBuilder);
+                }
+                groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
+                outputBlocks[hashChannels.length + i] = outputBuilder.build();
+            }
         }
 
         return new Page(positionCount, outputBlocks);
