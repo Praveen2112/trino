@@ -102,6 +102,11 @@ public class GroupedAggregator
         }
     }
 
+    public Block getIntermediateBlock(Page page)
+    {
+        return page.getBlock(inputChannels[0]);
+    }
+
     public void prepareFinal()
     {
         accumulator.prepareFinal();
