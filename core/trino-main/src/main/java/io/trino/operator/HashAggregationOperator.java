@@ -347,7 +347,6 @@ public class HashAggregationOperator
 
         this.memoryContext = operatorContext.localUserMemoryContext();
         this.hyperLogLog = HyperLogLog.newInstance(8192);
-        hyperLogLog.makeDense();
     }
 
     @Override

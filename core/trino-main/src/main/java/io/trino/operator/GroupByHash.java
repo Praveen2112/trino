@@ -86,4 +86,9 @@ public interface GroupByHash
     {
         throw new UnsupportedOperationException();
     }
+
+    default HyperLogLog getHyperLogLog(Page page)
+    {
+        throw new UnsupportedOperationException();
+    }
 }
