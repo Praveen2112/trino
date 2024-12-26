@@ -33,6 +33,7 @@ import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.Type;
 import jakarta.annotation.Nullable;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +59,7 @@ public class SkipAggregationBuilder
     private Page currentPage;
     private final int[] hashChannels;
     private final HyperLogLog hyperLogLog;
+    private final CpcSketch cpcSketch;
 
     public SkipAggregationBuilder(
             int expectedGroups,
@@ -69,6 +71,7 @@ public class SkipAggregationBuilder
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
             HyperLogLog hyperLogLog,
+            CpcSketch cpcSketch,
             Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor,
             AggregationMetrics aggregationMetrics)
     {
@@ -89,6 +92,7 @@ public class SkipAggregationBuilder
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
         this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
+        this.cpcSketch = requireNonNull(cpcSketch, "cpcSketch is null");
     }
 
     @Override
@@ -110,7 +114,7 @@ public class SkipAggregationBuilder
         long start = System.nanoTime();
         long[] hashes = groupByHash.getHashes(currentPage.getLoadedPage(this.hashChannels));
         for (long hash : hashes) {
-            hyperLogLog.add(hash);
+            cpcSketch.update(hash);
         }
         aggregationMetrics.recordHyperLogLogUpdateTimeSince(start);
         currentPage = null;
