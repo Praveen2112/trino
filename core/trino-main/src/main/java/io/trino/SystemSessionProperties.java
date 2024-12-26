@@ -1139,7 +1139,7 @@ public final class SystemSessionProperties
                 integerProperty(
                         KLOG_COUNT,
                         "AA",
-                        11,
+                        8,
                         true));
     }
 
