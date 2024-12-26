@@ -34,6 +34,7 @@ import io.trino.spi.type.TypeOperators;
 import io.trino.spiller.SpillerFactory;
 import io.trino.sql.planner.plan.AggregationNode.Step;
 import io.trino.sql.planner.plan.PlanNodeId;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static io.trino.SystemSessionProperties.getBitCount;
+import static io.trino.SystemSessionProperties.getKLogCount;
 import static io.trino.operator.aggregation.builder.InMemoryHashAggregationBuilder.toTypes;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.sql.planner.optimizations.HashGenerationOptimizer.INITIAL_HASH_VALUE;
@@ -299,6 +301,7 @@ public class HashAggregationOperator
     private long aggregationInputRowsProcessed;
     private long aggregationUniqueRowsProduced;
     private final HyperLogLog hyperLogLog;
+    private final CpcSketch cpcSketch;
     private long rowsProcessedBySkipAggregationBuilder;
 
     private HashAggregationOperator(
@@ -349,6 +352,7 @@ public class HashAggregationOperator
         this.memoryContext = operatorContext.localUserMemoryContext();
         this.hyperLogLog = HyperLogLog.newInstance(getBitCount(operatorContext.getSession()));
         hyperLogLog.makeDense();
+        this.cpcSketch = new CpcSketch(getKLogCount(operatorContext.getSession()));
     }
 
     @Override
@@ -405,6 +409,7 @@ public class HashAggregationOperator
                         flatHashStrategyCompiler,
                         aggregationMetrics,
                         hyperLogLog,
+                        cpcSketch,
                         step.isInputRaw());
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {

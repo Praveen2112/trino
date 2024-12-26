@@ -33,6 +33,7 @@ import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.Type;
 import jakarta.annotation.Nullable;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +58,7 @@ public class SkipAggregationBuilder
     private Page currentPage;
     private final int[] hashChannels;
     private final HyperLogLog hyperLogLog;
+    private final CpcSketch cpcSketch;
     private final boolean inputRaw;
 
     public SkipAggregationBuilder(
@@ -70,6 +72,7 @@ public class SkipAggregationBuilder
             FlatHashStrategyCompiler hashStrategyCompiler,
             AggregationMetrics aggregationMetrics,
             HyperLogLog hyperLogLog,
+            CpcSketch cpcSketch,
             boolean inputRaw)
     {
         this.groupByHash = createGroupByHash(
@@ -88,6 +91,7 @@ public class SkipAggregationBuilder
         inputHashChannel.ifPresent(channelIndex -> hashChannels[groupByChannels.size()] = channelIndex);
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
         this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
+        this.cpcSketch = requireNonNull(cpcSketch, "cpcSketch is null");
         this.inputRaw = inputRaw;
     }
 
@@ -108,7 +112,8 @@ public class SkipAggregationBuilder
 
         Page result = buildOutputPage(currentPage);
         //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
-        groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
+        //groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
+        groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), cpcSketch);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
         return WorkProcessor.of(new HashOutput(result, result.getPositionCount()));
