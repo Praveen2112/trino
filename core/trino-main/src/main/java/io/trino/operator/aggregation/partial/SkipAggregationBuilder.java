@@ -34,6 +34,7 @@ import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.Type;
 import io.trino.sql.planner.plan.AggregationNode;
 import jakarta.annotation.Nullable;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -60,6 +61,7 @@ public class SkipAggregationBuilder
     private final HyperLogLog hyperLogLog;
     private final boolean inputRaw;
     private final boolean useBulkSerialization;
+    private final CpcSketch cpcSketch;
 
     public SkipAggregationBuilder(
             int expectedGroups,
@@ -72,6 +74,7 @@ public class SkipAggregationBuilder
             FlatHashStrategyCompiler hashStrategyCompiler,
             AggregationMetrics aggregationMetrics,
             HyperLogLog hyperLogLog,
+            CpcSketch cpcSketch,
             boolean inputRaw,
             boolean useBulkSerialization)
     {
@@ -93,6 +96,7 @@ public class SkipAggregationBuilder
         this.useBulkSerialization = useBulkSerialization;
         this.hyperLogLog = requireNonNull(hyperLogLog, "hyperLogLog is null");
         this.inputRaw = inputRaw;
+        this.cpcSketch = requireNonNull(cpcSketch, "cpcSketch is null");
     }
 
     @Override
@@ -112,7 +116,7 @@ public class SkipAggregationBuilder
 
         Page result = buildOutputPage(currentPage);
         //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
-        groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
+        groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), cpcSketch);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
         return WorkProcessor.of(new HashOutput(result, result.getPositionCount()));

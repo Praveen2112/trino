@@ -34,6 +34,7 @@ import io.trino.spi.type.TypeOperators;
 import io.trino.spiller.SpillerFactory;
 import io.trino.sql.planner.plan.AggregationNode.Step;
 import io.trino.sql.planner.plan.PlanNodeId;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -299,6 +300,7 @@ public class HashAggregationOperator
     private long aggregationUniqueRowsProduced;
     private final HyperLogLog hyperLogLog;
     private long rowsProcessedBySkipAggregationBuilder;
+    private final CpcSketch sketch = new CpcSketch();
 
     private HashAggregationOperator(
             OperatorContext operatorContext,
@@ -346,7 +348,7 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
-        this.hyperLogLog = HyperLogLog.newInstance(8192);
+        this.hyperLogLog = HyperLogLog.newInstance(65536);
         hyperLogLog.makeDense();
     }
 
@@ -404,6 +406,7 @@ public class HashAggregationOperator
                         flatHashStrategyCompiler,
                         aggregationMetrics,
                         hyperLogLog,
+                        sketch,
                         step.isInputRaw(),
                         true);
             }
@@ -554,7 +557,7 @@ public class HashAggregationOperator
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
             rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
+            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold(sketch.getEstimate() / rowsProcessedBySkipAggregationBuilder));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));

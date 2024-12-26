@@ -23,6 +23,7 @@ import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.block.DictionaryBlock;
 import io.trino.spi.block.RunLengthEncodedBlock;
 import io.trino.spi.type.Type;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.Arrays;
 import java.util.List;
@@ -166,6 +167,17 @@ public class FlatGroupByHash
         flatHash.computeHashes(blocks, hashes, 0, blocks[0].getPositionCount());
         for (long hash : hashes) {
             hyperLogLog.add(hash);
+        }
+    }
+
+    @Override
+    public void populateHash(Page page, CpcSketch hyperLogLog)
+    {
+        Block[] blocks = getBlocksFromPage(page);
+        long[] hashes = new long[blocks[0].getPositionCount()];
+        flatHash.computeHashes(blocks, hashes, 0, blocks[0].getPositionCount());
+        for (long hash : hashes) {
+            hyperLogLog.update(hash);
         }
     }
 

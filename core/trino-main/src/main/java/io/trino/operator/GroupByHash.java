@@ -20,6 +20,7 @@ import io.trino.annotation.NotThreadSafe;
 import io.trino.spi.Page;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.type.Type;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 
@@ -83,6 +84,11 @@ public interface GroupByHash
     }
 
     default void populateHash(Page page, HyperLogLog hyperLogLog)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    default void populateHash(Page page, CpcSketch cpcSketch)
     {
         throw new UnsupportedOperationException();
     }

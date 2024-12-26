@@ -336,6 +336,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.datasketches</groupId>
+            <artifactId>datasketches-java</artifactId>
+            <version>6.1.1</version>
+        </dependency>
+
+
+        <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analysis-common</artifactId>
             <version>10.0.0</version>

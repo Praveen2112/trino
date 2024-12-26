@@ -24,6 +24,7 @@ import io.trino.spi.block.DictionaryBlock;
 import io.trino.spi.block.RunLengthEncodedBlock;
 import io.trino.spi.type.AbstractLongType;
 import io.trino.spi.type.BigintType;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.Arrays;
 
@@ -165,6 +166,15 @@ public class BigintGroupByHash
         Block block = page.getBlock(0);
         for (int i = 0; i < block.getPositionCount(); i++) {
             hyperLogLog.addHash(BIGINT.getLong(block, i));
+        }
+    }
+
+    @Override
+    public void populateHash(Page page, CpcSketch cpcSketch)
+    {
+        Block block = page.getBlock(0);
+        for (int i = 0; i < block.getPositionCount(); i++) {
+            cpcSketch.update(BIGINT.getLong(block, i));
         }
     }
 
