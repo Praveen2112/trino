@@ -222,6 +222,7 @@ public final class SystemSessionProperties
     public static final String HLL_BUCKET_SIZE = "hll_bucket_size";
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION = "use_skip_aggregation_builder_for_partial_aggregate";
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION = "use_skip_aggregation_builder_for_intermediate_aggregate";
+    public static final String KLOG_COUNT = "klog_count";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -1146,7 +1147,12 @@ public final class SystemSessionProperties
                         USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION,
                         "Use skip aggregation builder for intermediate aggregation",
                         false,
-                        false));
+                        false),
+                integerProperty(
+                        KLOG_COUNT,
+                        "AA",
+                        11,
+                        true));
     }
 
     @Override
@@ -2054,5 +2060,10 @@ public final class SystemSessionProperties
     public static boolean useSkipAggregationForIntermediateAggregation(Session session)
     {
         return session.getSystemProperty(USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION, Boolean.class);
+    }
+
+    public static int getKLogCount(Session session)
+    {
+        return session.getSystemProperty(KLOG_COUNT, Integer.class);
     }
 }
