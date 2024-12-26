@@ -559,7 +559,7 @@ public class HashAggregationOperator
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
             rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
+            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) cpcSketch.getEstimate() / rowsProcessedBySkipAggregationBuilder));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));
