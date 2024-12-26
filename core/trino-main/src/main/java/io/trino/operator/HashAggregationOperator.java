@@ -34,6 +34,7 @@ import io.trino.spi.type.TypeOperators;
 import io.trino.spiller.SpillerFactory;
 import io.trino.sql.planner.plan.AggregationNode.Step;
 import io.trino.sql.planner.plan.PlanNodeId;
+import org.apache.datasketches.cpc.CpcSketch;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static io.trino.SystemSessionProperties.getHllBucketCount;
+import static io.trino.SystemSessionProperties.getKLogCount;
 import static io.trino.SystemSessionProperties.useSkipAggregationForIntermediateAggregation;
 import static io.trino.SystemSessionProperties.useSkipAggregationForPartialAggregation;
 import static io.trino.operator.HashGenerator.INITIAL_HASH_VALUE;
@@ -301,6 +303,7 @@ public class HashAggregationOperator
     private long aggregationInputRowsProcessed;
     private long aggregationUniqueRowsProduced;
     private final HyperLogLog hyperLogLog;
+    private final CpcSketch cpcSketch;
     private long rowsProcessedBySkipAggregationBuilder;
 
     private HashAggregationOperator(
@@ -351,6 +354,7 @@ public class HashAggregationOperator
         this.memoryContext = operatorContext.localUserMemoryContext();
         this.hyperLogLog = HyperLogLog.newInstance(getHllBucketCount(operatorContext.getSession()));
         hyperLogLog.makeDense();
+        this.cpcSketch = new CpcSketch(getKLogCount(operatorContext.getSession()));
     }
 
     @Override
@@ -407,7 +411,8 @@ public class HashAggregationOperator
                         memoryContext,
                         flatHashStrategyCompiler,
                         aggregationMetrics,
-                        hyperLogLog);
+                        hyperLogLog,
+                        cpcSketch);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {
                 // TODO: We ignore spillEnabled here if any aggregate has ORDER BY clause or DISTINCT because they are not yet implemented for spilling.
@@ -556,7 +561,7 @@ public class HashAggregationOperator
         if (aggregationBuilder instanceof SkipAggregationBuilder) {
             rowsProcessedBySkipAggregationBuilder += aggregationInputRowsProcessed;
             aggregationMetrics.recordInputRowsProcessedWithPartialAggregationDisabled(aggregationInputRowsProcessed);
-            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold((double) hyperLogLog.cardinality() / rowsProcessedBySkipAggregationBuilder));
+            partialAggregationController.ifPresent(controller -> controller.setUniqueRowsRatioThreshold(cpcSketch.getEstimate() / rowsProcessedBySkipAggregationBuilder));
         }
         else {
             partialAggregationController.ifPresent(controller -> controller.onFlush(aggregationInputBytesProcessed, aggregationInputRowsProcessed, OptionalLong.of(aggregationUniqueRowsProduced)));

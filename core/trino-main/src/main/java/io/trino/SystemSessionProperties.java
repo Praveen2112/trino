@@ -222,6 +222,7 @@ public final class SystemSessionProperties
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION = "use_skip_aggregation_builder_for_partial_aggregation";
     public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION = "use_skip_aggregation_builder_for_intermediate_aggregation";
     public static final String HLL_BUCKET_SIZE = "hll_bucket_size";
+    public static final String KLOG_COUNT = "klog_count";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -1146,6 +1147,11 @@ public final class SystemSessionProperties
                         HLL_BUCKET_SIZE,
                         "Hyperloglog bucket size",
                         8192,
+                        true),
+                 integerProperty(
+                        KLOG_COUNT,
+                        "AA",
+                        11,
                         true));
     }
 
@@ -2054,5 +2060,10 @@ public final class SystemSessionProperties
     public static int getHllBucketCount(Session session)
     {
         return session.getSystemProperty(HLL_BUCKET_SIZE, Integer.class);
+    }
+
+    public static int getKLogCount(Session session)
+    {
+        return session.getSystemProperty(KLOG_COUNT, Integer.class);
     }
 }
