@@ -67,6 +67,7 @@ public class InMemoryHashAggregationBuilder
     private final Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor;
 
     private boolean full;
+    private Step step;
 
     public InMemoryHashAggregationBuilder(
             List<AggregatorFactory> aggregatorFactories,
@@ -156,6 +157,7 @@ public class InMemoryHashAggregationBuilder
         groupedAggregators = builder.build();
         this.aggregationMetrics = requireNonNull(aggregationMetrics, "aggregationMetrics is null");
         this.uniqueRowsRatioThreshold = uniqueRowsRatioThreshold;
+        this.step = step;
     }
 
     @Override

@@ -49,6 +49,7 @@ public class PartialAggregationOutputProcessor
     private final List<Type> aggregatorIntermediateOutputTypes;
     private final List<Type> aggregationRawInputTypes;
     private final int[] hashChannels;
+    private final Optional<Integer> rawInputMaskChannel;
     private final int[] aggregationRawInputChannels;
     private final int[] maskChannels;
     private final int finalBlockCount;
@@ -58,6 +59,7 @@ public class PartialAggregationOutputProcessor
             AggregationNode.Step step,
             List<Integer> groupByChannels,
             Optional<Integer> inputHashChannel,
+            Optional<Integer> rawInputMaskChannel,
             List<AggregatorFactory> aggregatorFactories,
             List<? extends Type> aggregationRawInputTypes,
             List<Integer> aggregationRawInputChannels,
@@ -65,6 +67,7 @@ public class PartialAggregationOutputProcessor
     {
         this.step = requireNonNull(step, "step is null");
         this.aggregationRawInputTypes = ImmutableList.copyOf(aggregationRawInputTypes);
+        this.rawInputMaskChannel = requireNonNull(rawInputMaskChannel, "rawInputMaskChannel is null");
 
         this.aggregatorIntermediateOutputTypes = requireNonNull(aggregatorFactories, "aggregatorFactories is null")
                 .stream()
@@ -143,8 +146,14 @@ public class PartialAggregationOutputProcessor
         for (int i = 0; i < aggregationRawInputChannels.length; i++, blockOffset++) {
             finalPage[blockOffset] = page.getBlock(aggregationRawInputChannels[i]);
         }
+
+        if (step == AggregationNode.Step.INTERMEDIATE) {
+            finalPage[blockOffset] = page.getBlock(rawInputMaskChannel.get());
+        }
+        else {
+            finalPage[blockOffset] = RunLengthEncodedBlock.create(BOOLEAN, true, page.getPositionCount());
+        }
         // use raw input mask channel
-        finalPage[blockOffset] = RunLengthEncodedBlock.create(BOOLEAN, true, page.getPositionCount());
         return new Page(page.getPositionCount(), finalPage);
     }
 }

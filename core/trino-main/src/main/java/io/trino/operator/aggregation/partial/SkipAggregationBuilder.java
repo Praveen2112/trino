@@ -49,7 +49,7 @@ import static java.util.Objects.requireNonNull;
 public class SkipAggregationBuilder
         implements HashAggregationBuilder
 {
-    private final PartialAggregationOutputProcessor partialAggregationOutputProcessor;
+    private final Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor;
     private final LocalMemoryContext memoryContext;
     private final GroupByHash groupByHash;
     private final List<AggregatorFactory> aggregatorFactories;
@@ -69,7 +69,7 @@ public class SkipAggregationBuilder
             LocalMemoryContext memoryContext,
             FlatHashStrategyCompiler hashStrategyCompiler,
             HyperLogLog hyperLogLog,
-            PartialAggregationOutputProcessor partialAggregationOutputProcessor,
+            Optional<PartialAggregationOutputProcessor> partialAggregationOutputProcessor,
             AggregationMetrics aggregationMetrics)
     {
         this.groupByHash = createGroupByHash(
@@ -106,7 +106,7 @@ public class SkipAggregationBuilder
             return WorkProcessor.of();
         }
 
-        Page result = partialAggregationOutputProcessor.processRawInputPage(currentPage);
+        Page result = partialAggregationOutputProcessor.map(processor -> processor.processRawInputPage(currentPage)).orElse(currentPage);
         //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
         groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());

@@ -421,7 +421,7 @@ public class HashAggregationOperator
                         memoryContext,
                         flatHashStrategyCompiler,
                         hyperLogLog,
-                        partialAggregationOutputProcessor.get(),
+                        partialAggregationOutputProcessor,
                         aggregationMetrics);
             }
             else if (step.isOutputPartial() || !spillEnabled || !isSpillable()) {

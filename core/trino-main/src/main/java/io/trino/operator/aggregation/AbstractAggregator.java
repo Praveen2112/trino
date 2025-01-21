@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractAggregator
@@ -62,9 +61,6 @@ public abstract class AbstractAggregator
         this.maskChannel = requireNonNull(maskChannel, "maskChannel is null");
         this.maskBuilder = requireNonNull(maskBuilder, "aggregationMaskBuilder is null");
         this.metrics = requireNonNull(metrics, "aggregationMetrics is null");
-        if (step == AggregationNode.Step.INTERMEDIATE) {
-            checkArgument(aggregationRawInputChannels.size() == 1, "expected 1 input channel for intermediate aggregation");
-        }
     }
 
     protected void processPage(Page page, AccumulatorWrapper accumulator)

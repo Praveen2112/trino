@@ -25,7 +25,6 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class Aggregator
@@ -61,9 +60,6 @@ public class Aggregator
         this.maskChannel = requireNonNull(maskChannel, "maskChannel is null");
         this.maskBuilder = requireNonNull(maskBuilder, "maskBuilder is null");
         this.metrics = requireNonNull(metrics, "metrics is null");
-        if (step == Step.INTERMEDIATE) {
-            checkArgument(aggregationRawInputChannels.size() == 1, "expected 1 input channel for intermediate aggregation");
-        }
     }
 
     public Type getType()

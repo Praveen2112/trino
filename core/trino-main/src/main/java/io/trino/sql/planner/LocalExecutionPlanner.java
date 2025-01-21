@@ -4233,6 +4233,7 @@ public class LocalExecutionPlanner
                 step,
                 groupByChannels,
                 hashChannel,
+                rawInputMaskSymbol.map(symbol -> source.getLayout().get(symbol)),
                 aggregatorFactories,
                 aggregationRawInputTypes,
                 aggregationRawInputChannels,
