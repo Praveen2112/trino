@@ -410,7 +410,7 @@ public class HashAggregationOperator
             boolean partialAggregationDisabled = partialAggregationController
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
-            if (step.isOutputPartial() && partialAggregationDisabled && step == Step.PARTIAL) {
+            if (step.isOutputPartial() && partialAggregationDisabled) {
                 aggregationBuilder = new SkipAggregationBuilder(
                         expectedGroups,
                         groupByTypes,

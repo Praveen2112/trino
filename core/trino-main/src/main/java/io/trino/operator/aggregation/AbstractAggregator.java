@@ -113,8 +113,10 @@ public abstract class AbstractAggregator
         AggregationMask mask = maskBuilder.buildAggregationMask(arguments, Optional.of(maskBlock));
 
         accumulator.addInput(page.getColumns(aggregationRawInputChannels), mask);
+        //accumulator.addInput(page.getColumns(aggregationRawInputChannels).getPositions(arrayList.elements(), 0, arrayList.size()), AggregationMask.createSelectAll(arrayList.size()));
+        //accumulator.addInput(page.getColumns(aggregationRawInputChannels), mask);
 
-        accumulator.addIntermediate(filterByNull(rawInputMaskBlock), page.getBlock(intermediateStateChannel.getAsInt()));
+        accumulator.addIntermediate(page.getBlock(intermediateStateChannel.getAsInt()));
     }
 
     public Type getType()
@@ -168,6 +170,20 @@ public abstract class AbstractAggregator
         IntArrayList ids = new IntArrayList(positions);
         for (int i = 0; i < positions; ++i) {
             if (mask.isNull(i)) {
+                ids.add(i);
+            }
+        }
+
+        return ids;
+    }
+
+    private static IntArrayList filterByNonNull(Block mask)
+    {
+        int positions = mask.getPositionCount();
+
+        IntArrayList ids = new IntArrayList(positions);
+        for (int i = 0; i < positions; ++i) {
+            if (!mask.isNull(i)) {
                 ids.add(i);
             }
         }
