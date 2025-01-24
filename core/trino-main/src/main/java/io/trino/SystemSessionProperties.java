@@ -219,6 +219,8 @@ public final class SystemSessionProperties
     public static final String CLOSE_IDLE_WRITERS_TRIGGER_DURATION = "close_idle_writers_trigger_duration";
     public static final String COLUMNAR_FILTER_EVALUATION_ENABLED = "columnar_filter_evaluation_enabled";
     public static final String SPOOLING_ENABLED = "spooling_enabled";
+    public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION = "use_skip_aggregation_builder_for_partial_aggregation";
+    public static final String USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION = "use_skip_aggregation_builder_for_intermediate_aggregation";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -1128,7 +1130,17 @@ public final class SystemSessionProperties
                         SPOOLING_ENABLED,
                         "Enable client spooling protocol",
                         true,
-                        true));
+                        true),
+                booleanProperty(
+                        USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION,
+                        "Use skip aggregation builder for intermediate aggregation",
+                        false,
+                        false),
+                booleanProperty(
+                        USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION,
+                        "Use skip aggregation builder for intermediate aggregation",
+                        false,
+                        false));
     }
 
     @Override
@@ -2021,5 +2033,15 @@ public final class SystemSessionProperties
     public static boolean isUnsafePushdownAllowed(Session session)
     {
         return session.getSystemProperty(ALLOW_UNSAFE_PUSHDOWN, Boolean.class);
+    }
+
+    public static boolean useSkipAggregationForPartialAggregation(Session session)
+    {
+        return session.getSystemProperty(USE_SKIP_AGGREGATION_BUILDER_FOR_PARTIAL_AGGREGATION, Boolean.class);
+    }
+
+    public static boolean useSkipAggregationForIntermediateAggregation(Session session)
+    {
+        return session.getSystemProperty(USE_SKIP_AGGREGATION_BUILDER_FOR_INTERMEDIATE_AGGREGATION, Boolean.class);
     }
 }
