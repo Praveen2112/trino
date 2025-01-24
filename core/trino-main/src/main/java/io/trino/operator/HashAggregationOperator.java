@@ -44,6 +44,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static io.trino.SystemSessionProperties.getHllBucketCount;
+import static io.trino.SystemSessionProperties.useSkipAggregationForIntermediateAggregation;
+import static io.trino.SystemSessionProperties.useSkipAggregationForPartialAggregation;
 import static io.trino.operator.aggregation.builder.InMemoryHashAggregationBuilder.toTypes;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.sql.planner.optimizations.HashGenerationOptimizer.INITIAL_HASH_VALUE;
@@ -411,7 +413,8 @@ public class HashAggregationOperator
             boolean partialAggregationDisabled = partialAggregationController
                     .map(PartialAggregationController::isPartialAggregationDisabled)
                     .orElse(false);
-            if (step.isOutputPartial() && partialAggregationDisabled) {
+            if ((step.isOutputPartial() && partialAggregationDisabled) ||
+                    ((step == Step.PARTIAL && useSkipAggregationForPartialAggregation(operatorContext.getSession())) || (step == Step.INTERMEDIATE && useSkipAggregationForIntermediateAggregation(operatorContext.getSession())))) {
                 aggregationBuilder = new SkipAggregationBuilder(
                         expectedGroups,
                         groupByTypes,
