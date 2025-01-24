@@ -43,6 +43,7 @@ import java.util.OptionalLong;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
+import static io.trino.SystemSessionProperties.getHllBucketCount;
 import static io.trino.operator.aggregation.builder.InMemoryHashAggregationBuilder.toTypes;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.sql.planner.optimizations.HashGenerationOptimizer.INITIAL_HASH_VALUE;
@@ -364,7 +365,7 @@ public class HashAggregationOperator
         this.typeOperators = requireNonNull(typeOperators, "typeOperators is null");
 
         this.memoryContext = operatorContext.localUserMemoryContext();
-        this.hyperLogLog = HyperLogLog.newInstance(8192);
+        this.hyperLogLog = HyperLogLog.newInstance(getHllBucketCount(operatorContext.getSession()));
         hyperLogLog.makeDense();
     }
 
