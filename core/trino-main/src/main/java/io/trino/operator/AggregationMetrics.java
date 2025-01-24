@@ -28,9 +28,11 @@ public class AggregationMetrics
     static final String INPUT_ROWS_WITH_PARTIAL_AGGREGATION_DISABLED_METRIC_NAME = "Input rows processed without partial aggregation enabled";
     private static final String ACCUMULATOR_TIME_METRIC_NAME = "Accumulator update CPU time";
     private static final String GROUP_BY_HASH_TIME_METRIC_NAME = "Group by hash update CPU time";
+    private static final String HYPER_LOG_LOG_METRIC_NAME = "HyperLogLog update CPU time";
 
     private long accumulatorTimeNanos;
     private long groupByHashTimeNanos;
+    private long hyperLogLogTimeNanos;
     private long inputRowsProcessedWithPartialAggregationDisabled;
 
     public void recordAccumulatorUpdateTimeSince(long startNanos)
@@ -43,6 +45,11 @@ public class AggregationMetrics
         groupByHashTimeNanos += System.nanoTime() - startNanos;
     }
 
+    public void recordHyperLogLogUpdateTimeSince(long startNanos)
+    {
+        hyperLogLogTimeNanos += System.nanoTime() - startNanos;
+    }
+
     public void recordInputRowsProcessedWithPartialAggregationDisabled(long rows)
     {
         inputRowsProcessedWithPartialAggregationDisabled += rows;
@@ -52,6 +59,7 @@ public class AggregationMetrics
     {
         return new Metrics(ImmutableMap.of(
                 INPUT_ROWS_WITH_PARTIAL_AGGREGATION_DISABLED_METRIC_NAME, new LongCount(inputRowsProcessedWithPartialAggregationDisabled),
+                HYPER_LOG_LOG_METRIC_NAME, new DurationTiming(new Duration(hyperLogLogTimeNanos, NANOSECONDS)),
                 ACCUMULATOR_TIME_METRIC_NAME, new DurationTiming(new Duration(accumulatorTimeNanos, NANOSECONDS)),
                 GROUP_BY_HASH_TIME_METRIC_NAME, new DurationTiming(new Duration(groupByHashTimeNanos, NANOSECONDS))));
     }

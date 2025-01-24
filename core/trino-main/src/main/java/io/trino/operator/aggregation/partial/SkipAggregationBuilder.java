@@ -108,7 +108,9 @@ public class SkipAggregationBuilder
 
         Page result = partialAggregationOutputProcessor.map(processor -> processor.processRawInputPage(currentPage)).orElse(currentPage);
         //long uniqueValueCount = groupByHash.getApproximateDistinctValue(currentPage.getLoadedPage(this.hashChannels));
+        long start = System.nanoTime();
         groupByHash.populateHash(currentPage.getLoadedPage(this.hashChannels), hyperLogLog);
+        aggregationMetrics.recordHyperLogLogUpdateTimeSince(start);
         //System.out.println("Block " + currentPage.getPositionCount() + " " + groupByHash.getGroupCount());
         currentPage = null;
         return WorkProcessor.of(new HashOutput(result, result.getPositionCount()));
