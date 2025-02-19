@@ -117,6 +117,16 @@ public class GroupedAggregator
         }
     }
 
+    public void evaluate(int[] groupIds, BlockBuilder output)
+    {
+        if (step.isOutputPartial()) {
+            accumulator.evaluateIntermediate(groupIds, output);
+        }
+        else {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     // todo this should return a new GroupedAggregator instead of modifying the existing object
     public void setSpillOutput()
     {

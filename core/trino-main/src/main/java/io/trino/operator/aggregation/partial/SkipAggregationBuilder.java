@@ -167,9 +167,7 @@ public class SkipAggregationBuilder
             GroupedAggregator groupedAggregator = aggregatorFactories.get(i).createGroupedAggregator(aggregationMetrics);
             groupedAggregator.processPage(positionCount, groupIds, page);
             BlockBuilder outputBuilder = groupedAggregator.getType().createBlockBuilder(null, positionCount);
-            for (int position = 0; position < positionCount; position++) {
-                groupedAggregator.evaluate(position, outputBuilder);
-            }
+            groupedAggregator.evaluate(groupIds, outputBuilder);
             groupedAggregator = null; // ensure the groupedAggregator is eligible for GC
             outputBlocks[hashChannels.length + i] = outputBuilder.build();
         }

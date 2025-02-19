@@ -29,6 +29,13 @@ public interface GroupedAccumulator
 
     void evaluateIntermediate(int groupId, BlockBuilder output);
 
+    default void evaluateIntermediate(int[] groupsIds, BlockBuilder output)
+    {
+        for (int groupId : groupsIds) {
+            evaluateIntermediate(groupId, output);
+        }
+    }
+
     void evaluateFinal(int groupId, BlockBuilder output);
 
     void prepareFinal();

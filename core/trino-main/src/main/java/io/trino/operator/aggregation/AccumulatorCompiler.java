@@ -211,6 +211,7 @@ public final class AccumulatorCompiler
 
         if (grouped) {
             generateGroupedEvaluateIntermediate(definition, stateFieldAndDescriptors, true);
+            generateGroupedEvaluateIntermediateBulk(definition, stateFieldAndDescriptors, true);
         }
         else {
             generateEvaluateIntermediate(definition, stateFieldAndDescriptors, true);
@@ -850,6 +851,49 @@ public final class AccumulatorCompiler
             generateSerializeState(definition, stateFieldAndDescriptors, out, thisVariable, body);
             body.ret();
         }
+    }
+
+    private static void generateGroupedEvaluateIntermediateBulk(ClassDefinition definition, List<StateFieldAndDescriptor> stateFieldAndDescriptors, boolean decomposable)
+    {
+        Parameter groupIds = arg("groupIds", int[].class);
+        Parameter out = arg("out", BlockBuilder.class);
+        MethodDefinition method = definition.declareMethod(a(PUBLIC), "evaluateIntermediate", type(void.class), groupIds, out);
+
+        if (!decomposable) {
+            method.getBody()
+                    .append(newInstance(UnsupportedOperationException.class, constantString("Aggregation is not decomposable")))
+                    .throwObject();
+            return;
+        }
+
+        Variable thisVariable = method.getThis();
+        Scope scope = method.getScope();
+        Variable indexVariable = scope.declareVariable(int.class, "indexVariable");
+        BytecodeBlock forLoopBlock = new BytecodeBlock();
+
+        if (stateFieldAndDescriptors.size() == 1) {
+            BytecodeExpression stateSerializer = thisVariable.getField(getOnlyElement(stateFieldAndDescriptors).getStateSerializerField());
+            BytecodeExpression state = thisVariable.getField(getOnlyElement(stateFieldAndDescriptors).getStateField());
+
+            forLoopBlock.append(state.invoke("setGroupId", void.class, groupIds.getElement(indexVariable)))
+                    .append(stateSerializer.invoke("serialize", void.class, state.cast(AccumulatorState.class), out));
+        }
+        else {
+            for (StateFieldAndDescriptor stateFieldAndDescriptor : stateFieldAndDescriptors) {
+                BytecodeExpression state = thisVariable.getField(stateFieldAndDescriptor.getStateField());
+                forLoopBlock.append(state.invoke("setGroupId", void.class, groupIds.getElement(indexVariable)));
+            }
+
+            generateSerializeState(definition, stateFieldAndDescriptors, out, thisVariable, forLoopBlock);
+        }
+
+        method.getBody()
+                .append(new ForLoop()
+                        .initialize(indexVariable.set(constantInt(0)))
+                        .condition(BytecodeExpressions.lessThan(indexVariable, groupIds.length()))
+                        .update(indexVariable.increment())
+                        .body(forLoopBlock))
+                .ret();
     }
 
     private static void generateEvaluateIntermediate(ClassDefinition definition, List<StateFieldAndDescriptor> stateFieldAndDescriptors, boolean decomposable)
