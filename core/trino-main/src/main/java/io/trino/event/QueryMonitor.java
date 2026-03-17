@@ -67,6 +67,7 @@ import io.trino.spi.eventlistener.StageCpuDistribution;
 import io.trino.spi.eventlistener.StageOutputBufferMetrics;
 import io.trino.spi.eventlistener.StageOutputBufferUtilization;
 import io.trino.spi.eventlistener.StageTaskStatistics;
+import io.trino.spi.eventlistener.TableMetrics;
 import io.trino.spi.metrics.Metrics;
 import io.trino.spi.resourcegroups.QueryType;
 import io.trino.spi.resourcegroups.ResourceGroupId;
@@ -486,9 +487,7 @@ public class QueryMonitor
                             .map(column -> new QueryInputMetadata.Column(column.name(), column.type()))
                             .collect(toImmutableList()),
                     input.connectorInfo(),
-                    connectorMetrics,
-                    physicalInputBytes,
-                    physicalInputPositions));
+                    new TableMetrics(connectorMetrics, physicalInputBytes, physicalInputPositions)));
         }
 
         Optional<QueryOutputMetadata> output = Optional.empty();

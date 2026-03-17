@@ -31,6 +31,7 @@ import io.trino.spi.eventlistener.QueryInputMetadata;
 import io.trino.spi.eventlistener.QueryMetadata;
 import io.trino.spi.eventlistener.QueryOutputMetadata;
 import io.trino.spi.eventlistener.QueryStatistics;
+import io.trino.spi.eventlistener.TableMetrics;
 import io.trino.spi.metrics.Metrics;
 import io.trino.spi.resourcegroups.QueryType;
 import io.trino.spi.resourcegroups.ResourceGroupId;
@@ -186,9 +187,7 @@ final class TestMysqlEventListener
                             "table1",
                             List.of(new QueryInputMetadata.Column("column1", BIGINT), new QueryInputMetadata.Column("column2", INTEGER)),
                             Optional.of("connectorInfo1"),
-                            new Metrics(ImmutableMap.of()),
-                            OptionalLong.of(201),
-                            OptionalLong.of(202)),
+                            new TableMetrics(new Metrics(ImmutableMap.of()), OptionalLong.of(201), OptionalLong.of(202))),
                     new QueryInputMetadata(
                             Optional.of("connectorName2"),
                             "catalog2",
@@ -197,9 +196,7 @@ final class TestMysqlEventListener
                             "table2",
                             List.of(new QueryInputMetadata.Column("column3", BIGINT), new QueryInputMetadata.Column("column4", INTEGER)),
                             Optional.of("connectorInfo2"),
-                            new Metrics(ImmutableMap.of()),
-                            OptionalLong.of(203),
-                            OptionalLong.of(204))),
+                            new TableMetrics(new Metrics(ImmutableMap.of()), OptionalLong.of(203), OptionalLong.of(204)))),
             Optional.of(new QueryOutputMetadata(
                     "catalog3",
                     new CatalogVersion("default"),

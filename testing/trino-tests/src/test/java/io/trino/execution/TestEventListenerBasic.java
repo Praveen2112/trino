@@ -48,7 +48,6 @@ import io.trino.spi.eventlistener.OutputColumnMetadata;
 import io.trino.spi.eventlistener.QueryCompletedEvent;
 import io.trino.spi.eventlistener.QueryCreatedEvent;
 import io.trino.spi.eventlistener.QueryFailureInfo;
-import io.trino.spi.eventlistener.QueryInputMetadata;
 import io.trino.spi.eventlistener.QueryStatistics;
 import io.trino.spi.eventlistener.RoutineInfo;
 import io.trino.spi.eventlistener.TableInfo;
@@ -1426,7 +1425,7 @@ public class TestEventListenerBasic
         QueryEvents queryEvents = runQueryAndWaitForEvents("SELECT * FROM mock.tiny.nation").getQueryEvents();
         QueryCompletedEvent event = queryEvents.getQueryCompletedEvent();
         List<Metrics> connectorMetrics = event.getIoMetadata().getInputs().stream()
-                .map(QueryInputMetadata::getConnectorMetrics)
+                .map(queryInputMetadata -> queryInputMetadata.getTableMetrics().connectorMetrics())
                 .collect(toImmutableList());
         assertThat(connectorMetrics).containsExactly(TEST_METRICS);
     }

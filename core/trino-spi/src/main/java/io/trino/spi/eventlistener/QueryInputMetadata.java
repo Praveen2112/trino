@@ -17,11 +17,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.trino.spi.Unstable;
 import io.trino.spi.connector.CatalogVersion;
-import io.trino.spi.metrics.Metrics;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalLong;
 
 import static java.util.Objects.requireNonNull;
 
@@ -37,9 +35,7 @@ public class QueryInputMetadata
     private final String table;
     private final List<Column> columns;
     private final Optional<Object> connectorInfo;
-    private final Metrics connectorMetrics;
-    private final OptionalLong physicalInputBytes;
-    private final OptionalLong physicalInputRows;
+    private final TableMetrics tableMetrics;
 
     @JsonCreator
     @Unstable
@@ -51,9 +47,7 @@ public class QueryInputMetadata
             String table,
             List<Column> columns,
             Optional<Object> connectorInfo,
-            Metrics connectorMetrics,
-            OptionalLong physicalInputBytes,
-            OptionalLong physicalInputRows)
+            TableMetrics tableMetrics)
     {
         this.connectorName = requireNonNull(connectorName, "connectorName is null");
         this.catalogName = requireNonNull(catalogName, "catalogName is null");
@@ -62,9 +56,7 @@ public class QueryInputMetadata
         this.table = requireNonNull(table, "table is null");
         this.columns = requireNonNull(columns, "columns is null");
         this.connectorInfo = requireNonNull(connectorInfo, "connectorInfo is null");
-        this.connectorMetrics = requireNonNull(connectorMetrics, "connectorMetrics is null");
-        this.physicalInputBytes = requireNonNull(physicalInputBytes, "physicalInputBytes is null");
-        this.physicalInputRows = requireNonNull(physicalInputRows, "physicalInputRows is null");
+        this.tableMetrics = requireNonNull(tableMetrics, "tableMetrics is null");
     }
 
     @JsonProperty
@@ -110,21 +102,9 @@ public class QueryInputMetadata
     }
 
     @JsonProperty
-    public Metrics getConnectorMetrics()
+    public TableMetrics getTableMetrics()
     {
-        return connectorMetrics;
-    }
-
-    @JsonProperty
-    public OptionalLong getPhysicalInputBytes()
-    {
-        return physicalInputBytes;
-    }
-
-    @JsonProperty
-    public OptionalLong getPhysicalInputRows()
-    {
-        return physicalInputRows;
+        return tableMetrics;
     }
 
     public record Column(String name, String type) {}
