@@ -258,6 +258,7 @@ public class FailedDispatchQuery
                 Optional.empty(),
                 RetryPolicy.NONE,
                 false,
+                ImmutableMap.of(),
                 version);
 
         return queryInfo;

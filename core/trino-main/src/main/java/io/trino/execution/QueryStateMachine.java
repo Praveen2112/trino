@@ -17,7 +17,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -25,6 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.errorprone.annotations.ThreadSafe;
 import com.google.errorprone.annotations.concurrent.GuardedBy;
 import io.airlift.log.Logger;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
@@ -39,6 +43,7 @@ import io.trino.execution.querystats.PlanOptimizersStatsCollector;
 import io.trino.execution.warnings.WarningCollector;
 import io.trino.metadata.CatalogInfo;
 import io.trino.metadata.Metadata;
+import io.trino.metadata.QualifiedObjectName;
 import io.trino.operator.BlockedReason;
 import io.trino.operator.OperatorStats;
 import io.trino.security.AccessControl;
@@ -54,6 +59,7 @@ import io.trino.spi.eventlistener.ColumnLineageInfo;
 import io.trino.spi.eventlistener.RoutineInfo;
 import io.trino.spi.eventlistener.StageGcStatistics;
 import io.trino.spi.eventlistener.TableInfo;
+import io.trino.spi.eventlistener.TableMetrics;
 import io.trino.spi.exchange.ExchangeId;
 import io.trino.spi.metrics.Metrics;
 import io.trino.spi.resourcegroups.QueryType;
@@ -63,7 +69,10 @@ import io.trino.spi.type.Type;
 import io.trino.sql.SessionPropertyResolver.SessionPropertiesApplier;
 import io.trino.sql.analyzer.Output;
 import io.trino.sql.planner.PlanFragment;
+import io.trino.sql.planner.plan.PlanFragmentId;
+import io.trino.sql.planner.plan.PlanNode;
 import io.trino.sql.planner.plan.PlanNodeId;
+import io.trino.sql.planner.plan.PlanVisitor;
 import io.trino.tracing.TrinoAttributes;
 import io.trino.transaction.TransactionId;
 import io.trino.transaction.TransactionInfo;
@@ -74,12 +83,15 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -694,6 +706,14 @@ public class QueryStateMachine
         boolean finalInfo = state.isDone() &&
                 getAllStages(stages).stream().allMatch(StageInfo::isFinalStageInfo);
 
+        ImmutableMap.Builder<QualifiedObjectName, TableMetrics> tableMetricsBuilder = ImmutableMap.builder();
+        if (finalInfo) {
+            Multimap<FragmentNode, OperatorStats> planNodeStats = extractPlanNodeStats(stages);
+            for (Input input : inputs.get()) {
+                tableMetricsBuilder.put(new QualifiedObjectName(input.catalogName(), input.schema(), input.table()), getTableMetrics(input, planNodeStats));
+            }
+        }
+
         return new QueryInfo(
                 queryId,
                 session.toSessionRepresentation(),
@@ -731,6 +751,7 @@ public class QueryStateMachine
                 queryType,
                 getRetryPolicy(session),
                 false,
+                tableMetricsBuilder.buildOrThrow(),
                 version);
     }
 
@@ -1548,6 +1569,7 @@ public class QueryStateMachine
                 queryInfo.getQueryType(),
                 queryInfo.getRetryPolicy(),
                 true,
+                queryInfo.getTableMetrics(),
                 version);
     }
 
@@ -1800,6 +1822,106 @@ public class QueryStateMachine
                 return;
             }
             executor.execute(() -> listener.get().accept(info.get()));
+        }
+    }
+
+    public static TableMetrics getTableMetrics(Input input, Multimap<FragmentNode, OperatorStats> planNodeStats)
+    {
+        // Note: input table can be mapped to multiple operators
+        Collection<OperatorStats> inputTableOperatorStats = planNodeStats.get(new FragmentNode(input.fragmentId(), input.planNodeId()));
+
+        OptionalLong physicalInputBytes = OptionalLong.empty();
+        OptionalLong physicalInputPositions = OptionalLong.empty();
+        if (!inputTableOperatorStats.isEmpty()) {
+            physicalInputBytes = OptionalLong.of(inputTableOperatorStats.stream()
+                    .map(OperatorStats::getPhysicalInputDataSize)
+                    .mapToLong(DataSize::toBytes)
+                    .sum());
+            physicalInputPositions = OptionalLong.of(inputTableOperatorStats.stream()
+                    .mapToLong(OperatorStats::getPhysicalInputPositions)
+                    .sum());
+        }
+        Metrics connectorMetrics = inputTableOperatorStats.stream()
+                .map(OperatorStats::getConnectorMetrics)
+                .reduce(Metrics.EMPTY, Metrics::mergeWith);
+
+        return new TableMetrics(connectorMetrics, physicalInputBytes, physicalInputPositions);
+    }
+
+    private static void extractPlanNodeStats(StageInfo stageInfo, ImmutableMultimap.Builder<FragmentNode, OperatorStats> planNodeStats)
+    {
+        PlanFragment fragment = stageInfo.plan();
+        if (fragment == null) {
+            return;
+        }
+
+        // Note: a plan node may be mapped to multiple operators
+        Map<PlanNodeId, Collection<OperatorStats>> allOperatorStats = Multimaps.index(stageInfo.stageStats().getOperatorSummaries(), OperatorStats::getPlanNodeId).asMap();
+
+        // Sometimes a plan node is merged with other nodes into a single operator, and in that case,
+        // use the stats of the nearest parent node with stats.
+        fragment.getRoot().accept(
+                new PlanVisitor<Void, Collection<OperatorStats>>()
+                {
+                    @Override
+                    protected Void visitPlan(PlanNode node, Collection<OperatorStats> parentStats)
+                    {
+                        Collection<OperatorStats> operatorStats = allOperatorStats.getOrDefault(node.getId(), parentStats);
+                        planNodeStats.putAll(new FragmentNode(fragment.getId(), node.getId()), operatorStats);
+
+                        for (PlanNode child : node.getSources()) {
+                            child.accept(this, operatorStats);
+                        }
+                        return null;
+                    }
+                },
+                ImmutableList.of());
+    }
+
+    public static Multimap<FragmentNode, OperatorStats> extractPlanNodeStats(Optional<StagesInfo> stagesInfo)
+    {
+        // Note: A plan may map a table scan to multiple operators.
+        ImmutableMultimap.Builder<FragmentNode, OperatorStats> planNodeStats = ImmutableMultimap.builder();
+        getAllStages(stagesInfo)
+                .forEach(stageInfo -> extractPlanNodeStats(stageInfo, planNodeStats));
+        return planNodeStats.build();
+    }
+
+    public static class FragmentNode
+    {
+        private final PlanFragmentId fragmentId;
+        private final PlanNodeId nodeId;
+
+        public FragmentNode(PlanFragmentId fragmentId, PlanNodeId nodeId)
+        {
+            this.fragmentId = requireNonNull(fragmentId, "fragmentId is null");
+            this.nodeId = requireNonNull(nodeId, "nodeId is null");
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            FragmentNode that = (FragmentNode) o;
+            return fragmentId.equals(that.fragmentId) &&
+                    nodeId.equals(that.nodeId);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(fragmentId, nodeId);
+        }
+
+        @Override
+        public String toString()
+        {
+            return fragmentId + ":" + nodeId;
         }
     }
 }

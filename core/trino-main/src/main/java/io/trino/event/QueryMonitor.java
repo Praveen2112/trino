@@ -15,9 +15,6 @@ package io.trino.event;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 import com.google.inject.Inject;
 import io.airlift.json.JsonCodec;
 import io.airlift.log.Logger;
@@ -39,6 +36,7 @@ import io.trino.execution.TaskInfo;
 import io.trino.execution.TaskState;
 import io.trino.metadata.FunctionManager;
 import io.trino.metadata.Metadata;
+import io.trino.metadata.QualifiedObjectName;
 import io.trino.metadata.SessionPropertyManager;
 import io.trino.operator.OperatorStats;
 import io.trino.operator.RetryPolicy;
@@ -72,11 +70,6 @@ import io.trino.spi.metrics.Metrics;
 import io.trino.spi.resourcegroups.QueryType;
 import io.trino.spi.resourcegroups.ResourceGroupId;
 import io.trino.sql.analyzer.Analysis;
-import io.trino.sql.planner.PlanFragment;
-import io.trino.sql.planner.plan.PlanFragmentId;
-import io.trino.sql.planner.plan.PlanNode;
-import io.trino.sql.planner.plan.PlanNodeId;
-import io.trino.sql.planner.plan.PlanVisitor;
 import io.trino.sql.planner.planprinter.Anonymizer;
 import io.trino.sql.planner.planprinter.CounterBasedAnonymizer;
 import io.trino.sql.planner.planprinter.NoOpAnonymizer;
@@ -86,13 +79,11 @@ import io.trino.transaction.TransactionId;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Function;
@@ -455,27 +446,10 @@ public class QueryMonitor
 
     private static QueryIOMetadata getQueryIOMetadata(QueryInfo queryInfo)
     {
-        Multimap<FragmentNode, OperatorStats> planNodeStats = extractPlanNodeStats(queryInfo);
-
         ImmutableList.Builder<QueryInputMetadata> inputs = ImmutableList.builderWithExpectedSize(queryInfo.getInputs().size());
         for (Input input : queryInfo.getInputs()) {
-            // Note: input table can be mapped to multiple operators
-            Collection<OperatorStats> inputTableOperatorStats = planNodeStats.get(new FragmentNode(input.fragmentId(), input.planNodeId()));
-
-            OptionalLong physicalInputBytes = OptionalLong.empty();
-            OptionalLong physicalInputPositions = OptionalLong.empty();
-            if (!inputTableOperatorStats.isEmpty()) {
-                physicalInputBytes = OptionalLong.of(inputTableOperatorStats.stream()
-                        .map(OperatorStats::getPhysicalInputDataSize)
-                        .mapToLong(DataSize::toBytes)
-                        .sum());
-                physicalInputPositions = OptionalLong.of(inputTableOperatorStats.stream()
-                        .mapToLong(OperatorStats::getPhysicalInputPositions)
-                        .sum());
-            }
-            Metrics connectorMetrics = inputTableOperatorStats.stream()
-                    .map(OperatorStats::getConnectorMetrics)
-                    .reduce(Metrics.EMPTY, Metrics::mergeWith);
+            QualifiedObjectName tableName = new QualifiedObjectName(input.catalogName(), input.schema(), input.table());
+            TableMetrics tableMetrics = queryInfo.getTableMetrics().getOrDefault(tableName, new TableMetrics(Metrics.EMPTY, OptionalLong.empty(), OptionalLong.empty()));
 
             inputs.add(new QueryInputMetadata(
                     input.connectorName(),
@@ -487,7 +461,7 @@ public class QueryMonitor
                             .map(column -> new QueryInputMetadata.Column(column.name(), column.type()))
                             .collect(toImmutableList()),
                     input.connectorInfo(),
-                    new TableMetrics(connectorMetrics, physicalInputBytes, physicalInputPositions)));
+                    tableMetrics));
         }
 
         Optional<QueryOutputMetadata> output = Optional.empty();
@@ -519,45 +493,6 @@ public class QueryMonitor
                             tableFinishInfo.map(TableFinishInfo::isJsonLengthLimitExceeded)));
         }
         return new QueryIOMetadata(inputs.build(), output);
-    }
-
-    private static Multimap<FragmentNode, OperatorStats> extractPlanNodeStats(QueryInfo queryInfo)
-    {
-        // Note: A plan may map a table scan to multiple operators.
-        ImmutableMultimap.Builder<FragmentNode, OperatorStats> planNodeStats = ImmutableMultimap.builder();
-        getAllStages(queryInfo.getStages())
-                .forEach(stageInfo -> extractPlanNodeStats(stageInfo, planNodeStats));
-        return planNodeStats.build();
-    }
-
-    private static void extractPlanNodeStats(StageInfo stageInfo, ImmutableMultimap.Builder<FragmentNode, OperatorStats> planNodeStats)
-    {
-        PlanFragment fragment = stageInfo.plan();
-        if (fragment == null) {
-            return;
-        }
-
-        // Note: a plan node may be mapped to multiple operators
-        Map<PlanNodeId, Collection<OperatorStats>> allOperatorStats = Multimaps.index(stageInfo.stageStats().getOperatorSummaries(), OperatorStats::getPlanNodeId).asMap();
-
-        // Sometimes a plan node is merged with other nodes into a single operator, and in that case,
-        // use the stats of the nearest parent node with stats.
-        fragment.getRoot().accept(
-                new PlanVisitor<Void, Collection<OperatorStats>>()
-                {
-                    @Override
-                    protected Void visitPlan(PlanNode node, Collection<OperatorStats> parentStats)
-                    {
-                        Collection<OperatorStats> operatorStats = allOperatorStats.getOrDefault(node.getId(), parentStats);
-                        planNodeStats.putAll(new FragmentNode(fragment.getId(), node.getId()), operatorStats);
-
-                        for (PlanNode child : node.getSources()) {
-                            child.accept(this, operatorStats);
-                        }
-                        return null;
-                    }
-                },
-                ImmutableList.of());
     }
 
     private Optional<QueryFailureInfo> createQueryFailureInfo(ExecutionFailureInfo failureInfo, Optional<StagesInfo> stages)
@@ -953,44 +888,6 @@ public class QueryMonitor
                 (double) distribution.getMax() / scaleFactor,
                 (double) distribution.getTotal(),
                 distribution.getAverage() / scaleFactor);
-    }
-
-    private static class FragmentNode
-    {
-        private final PlanFragmentId fragmentId;
-        private final PlanNodeId nodeId;
-
-        public FragmentNode(PlanFragmentId fragmentId, PlanNodeId nodeId)
-        {
-            this.fragmentId = requireNonNull(fragmentId, "fragmentId is null");
-            this.nodeId = requireNonNull(nodeId, "nodeId is null");
-        }
-
-        @Override
-        public boolean equals(Object o)
-        {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            FragmentNode that = (FragmentNode) o;
-            return fragmentId.equals(that.fragmentId) &&
-                    nodeId.equals(that.nodeId);
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return Objects.hash(fragmentId, nodeId);
-        }
-
-        @Override
-        public String toString()
-        {
-            return fragmentId + ":" + nodeId;
-        }
     }
 
     private static Instant min(Instant a, Instant b)

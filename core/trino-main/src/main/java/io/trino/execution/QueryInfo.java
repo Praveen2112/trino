@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import io.trino.SessionRepresentation;
+import io.trino.metadata.QualifiedObjectName;
 import io.trino.operator.RetryPolicy;
 import io.trino.spi.ErrorCode;
 import io.trino.spi.ErrorType;
@@ -29,6 +30,7 @@ import io.trino.spi.TrinoWarning;
 import io.trino.spi.eventlistener.ColumnLineageInfo;
 import io.trino.spi.eventlistener.RoutineInfo;
 import io.trino.spi.eventlistener.TableInfo;
+import io.trino.spi.eventlistener.TableMetrics;
 import io.trino.spi.resourcegroups.QueryType;
 import io.trino.spi.resourcegroups.ResourceGroupId;
 import io.trino.spi.security.SelectedRole;
@@ -87,6 +89,7 @@ public class QueryInfo
     private final Optional<QueryType> queryType;
     private final RetryPolicy retryPolicy;
     private final boolean pruned;
+    private final Map<QualifiedObjectName, TableMetrics> tableMetrics;
     private final NodeVersion version;
 
     @JsonCreator
@@ -127,6 +130,7 @@ public class QueryInfo
             @JsonProperty("queryType") Optional<QueryType> queryType,
             @JsonProperty("retryPolicy") RetryPolicy retryPolicy,
             @JsonProperty("pruned") boolean pruned,
+            @JsonProperty("tableMetrics") Map<QualifiedObjectName, TableMetrics> tableMetrics,
             @JsonProperty("version") NodeVersion version)
     {
         requireNonNull(queryId, "queryId is null");
@@ -198,6 +202,7 @@ public class QueryInfo
         this.pruned = pruned;
         this.version = version;
         this.selectColumnsLineageInfo = selectColumnsLineageInfo.map(ImmutableList::copyOf);
+        this.tableMetrics = ImmutableMap.copyOf(requireNonNull(tableMetrics, "tableMetrics is null"));
     }
 
     @JsonProperty
@@ -442,6 +447,12 @@ public class QueryInfo
     public boolean isPruned()
     {
         return pruned;
+    }
+
+    @JsonProperty
+    public Map<QualifiedObjectName, TableMetrics> getTableMetrics()
+    {
+        return tableMetrics;
     }
 
     @JsonProperty
